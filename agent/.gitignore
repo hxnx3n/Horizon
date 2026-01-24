@@ -1,0 +1,26 @@
+# Binaries
+horizon-agent
+horizon-agent-*
+*.exe
+
+# Test artifacts
+*.test
+*.out
+coverage.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDEs
+*~
+
+# Environment variables
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
