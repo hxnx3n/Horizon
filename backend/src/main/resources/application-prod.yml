@@ -1,8 +1,12 @@
 spring:
+  config:
+    activate:
+      on-profile: prod
+
   datasource:
-    url: jdbc:postgresql://10.0.0.2:5432/mydb?currentSchema=public
-    username: admin
-    password: hxnx
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://database:5432/horizon}
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:hxnx}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -20,11 +24,15 @@ spring:
         format_sql: false
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-  security:
-    jwt:
-      secret-key: ${JWT_SECRET_KEY}
-      expiration: 3600000
-      refresh-expiration: 604800000
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-key-here-change-in-production-environment}
+  expiration: ${JWT_EXPIRATION:3600000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 server:
   port: 8080

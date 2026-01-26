@@ -2,7 +2,6 @@ package com.horizon.backend.service.impl;
 
 import com.horizon.backend.dto.auth.LoginRequest;
 import com.horizon.backend.dto.auth.LoginResponse;
-import com.horizon.backend.dto.auth.RefreshTokenRequest;
 import com.horizon.backend.dto.auth.RegisterRequest;
 import com.horizon.backend.dto.user.UserDto;
 import com.horizon.backend.entity.User;
@@ -12,8 +11,9 @@ import com.horizon.backend.exception.ResourceNotFoundException;
 import com.horizon.backend.repository.UserRepository;
 import com.horizon.backend.security.JwtTokenProvider;
 import com.horizon.backend.service.AuthService;
-import lombok.RequiredArgsConstructor;
+import com.horizon.backend.service.TokenService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -36,10 +35,29 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
+    private final TokenService tokenService;
+    private final long jwtExpiration;
+
+    public AuthServiceImpl(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtTokenProvider jwtTokenProvider,
+            AuthenticationManager authenticationManager,
+            UserDetailsService userDetailsService,
+            TokenService tokenService,
+            @Value("${jwt.expiration}") long jwtExpiration) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.authenticationManager = authenticationManager;
+        this.userDetailsService = userDetailsService;
+        this.tokenService = tokenService;
+        this.jwtExpiration = jwtExpiration;
+    }
 
     @Override
     @Transactional
-    public LoginResponse register(RegisterRequest request) {
+    public LoginResponse register(RegisterRequest request, String userAgent, String ipAddress) {
         if (!request.getPassword().equals(request.getPasswordConfirm())) {
             throw new BadRequestException("Passwords do not match");
         }
@@ -61,14 +79,14 @@ public class AuthServiceImpl implements AuthService {
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(savedUser.getEmail());
         String accessToken = jwtTokenProvider.generateToken(userDetails);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+        String refreshToken = tokenService.createRefreshToken(savedUser, userAgent, ipAddress);
 
         return buildLoginResponse(savedUser, accessToken, refreshToken);
     }
 
     @Override
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, String userAgent, String ipAddress) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
@@ -86,7 +104,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String accessToken = jwtTokenProvider.generateToken(userDetails);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+        String refreshToken = tokenService.createRefreshToken(user, userAgent, ipAddress);
 
         log.info("User logged in successfully: {}", user.getEmail());
 
@@ -94,36 +112,64 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public LoginResponse refreshToken(RefreshTokenRequest request) {
-        String refreshToken = request.getRefreshToken();
+    @Transactional
+    public LoginResponse refreshToken(String refreshToken, String userAgent, String ipAddress) {
+        TokenService.RefreshTokenInfo tokenInfo = tokenService.validateRefreshToken(refreshToken);
 
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
+        if (tokenInfo == null) {
             throw new BadRequestException("Invalid or expired refresh token");
         }
 
-        String username = jwtTokenProvider.extractUsername(refreshToken);
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        User user = userRepository.findById(tokenInfo.userId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", tokenInfo.userId()));
 
-        if (!jwtTokenProvider.isTokenValid(refreshToken, userDetails)) {
-            throw new BadRequestException("Invalid refresh token");
-        }
+        tokenService.deleteRefreshToken(refreshToken);
 
-        User user = userRepository.findByEmail(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", username));
-
+        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String newAccessToken = jwtTokenProvider.generateToken(userDetails);
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+        String newRefreshToken = tokenService.createRefreshToken(user, userAgent, ipAddress);
 
-        log.info("Token refreshed for user: {}", username);
+        log.info("Token refreshed for user: {}", user.getEmail());
 
         return buildLoginResponse(user, newAccessToken, newRefreshToken);
     }
 
     @Override
-    public void logout(String token) {
+    @Transactional
+    public void logout(String refreshToken, String accessToken) {
+        if (refreshToken != null) {
+            tokenService.deleteRefreshToken(refreshToken);
+        }
+
+        if (accessToken != null) {
+            if (accessToken.startsWith("Bearer ")) {
+                accessToken = accessToken.substring(7);
+            }
+            tokenService.blacklistAccessToken(accessToken);
+        }
+
         SecurityContextHolder.clearContext();
         log.info("User logged out successfully");
+    }
+
+    @Override
+    @Transactional
+    public void logoutAll(String accessToken) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+
+        tokenService.deleteAllUserRefreshTokens(user.getId());
+
+        if (accessToken != null) {
+            if (accessToken.startsWith("Bearer ")) {
+                accessToken = accessToken.substring(7);
+            }
+            tokenService.blacklistAccessToken(accessToken);
+        }
+
+        SecurityContextHolder.clearContext();
+        log.info("User logged out from all devices: {}", email);
     }
 
     @Override
@@ -131,6 +177,11 @@ public class AuthServiceImpl implements AuthService {
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
+
+        if (tokenService.isAccessTokenBlacklisted(token)) {
+            return false;
+        }
+
         return jwtTokenProvider.validateToken(token);
     }
 
@@ -163,6 +214,6 @@ public class AuthServiceImpl implements AuthService {
                 .profileImageUrl(user.getProfileImageUrl())
                 .build();
 
-        return LoginResponse.of(accessToken, refreshToken, 86400000L, userInfo);
+        return LoginResponse.of(accessToken, refreshToken, jwtExpiration, userInfo);
     }
 }

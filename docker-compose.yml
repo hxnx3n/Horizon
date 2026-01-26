@@ -26,11 +26,15 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/horizon
       - SPRING_DATASOURCE_USERNAME=admin
       - SPRING_DATASOURCE_PASSWORD=hxnx
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
       - JWT_SECRET=your-256-bit-secret-key-here-change-in-production-environment
-      - JWT_EXPIRATION=86400000
+      - JWT_EXPIRATION=3600000
       - JWT_REFRESH_EXPIRATION=604800000
     depends_on:
       database:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - horizon-network
@@ -62,3 +66,34 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
+      - horizon-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d horizon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: horizon-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - horizon-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  horizon-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
