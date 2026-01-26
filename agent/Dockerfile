@@ -5,6 +5,7 @@ RUN apk add --no-cache git
 WORKDIR /app
 
 COPY go.mod go.sum ./
+
 RUN go mod download
 
 COPY . .
@@ -18,8 +19,6 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /root/
 
 COPY --from=builder /app/horizon-agent .
-# NOTE: COPY doesn't support shell redirection/conditionals.
-# If you need .env in the image, ensure it exists in the build context (or pass it via env/secret handling instead).
 
 EXPOSE 9090
 
