@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: horizon-backend
+
+  profiles:
+    active: dev
+
+  datasource:
+    url: jdbc:postgresql://10.0.0.2:5432/dev?currentSchema=public
+    driver-class-name: org.postgresql.Driver
+    username: admin
+    password: hxnx
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: Asia/Seoul
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+logging:
+  level:
+    root: INFO
+    com.horizon.backend: DEBUG
+    org.springframework.security: DEBUG
+
+jwt:
+  secret: your-256-bit-secret-key-here-change-in-production-environment
+  expiration: 86400000
+  refresh-expiration: 604800000

@@ -1,0 +1,37 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://10.0.0.2:5432/mydb?currentSchema=public
+    username: admin
+    password: hxnx
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET_KEY}
+      expiration: 3600000
+      refresh-expiration: 604800000
+
+server:
+  port: 8080
+
+logging:
+  level:
+    root: WARN
+    com.horizon.backend: INFO
+  file:
+    name: logs/horizon-backend.log

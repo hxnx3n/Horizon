@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: horizon-backend-test
+
+  datasource:
+    url: jdbc:postgresql://10.0.0.2:5432/mydb?currentSchema=public
+    driver-class-name: org.postgresql.Driver
+    username: admin
+    password: hxnx
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: public
+
+server:
+  port: 0
+
+logging:
+  level:
+    root: WARN
+    com.horizon.backend: INFO
+
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci1qd3QtdG9rZW4tZ2VuZXJhdGlvbi1taW5pbXVtLTI1Ni1iaXRzLXJlcXVpcmVk
+  expiration: 3600000
+  refresh-expiration: 86400000
