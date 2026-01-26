@@ -1,19 +1,21 @@
-FROM node:22-alpine AS build
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json ./
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-RUN npm install
+COPY package*.json ./
+
+RUN pnpm install
 
 COPY . .
 
-RUN npm run build
+CMD ["pnpm", "build"]
 
-FROM nginx:alpine
+FROM nginx:alpine AS production
 
-COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 

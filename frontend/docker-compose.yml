@@ -1,0 +1,18 @@
+services:
+  frontend:
+    container_name: horizon-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: horizon-frontend:local
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    extra_hosts:
+      - "backend:host-gateway"
+    networks:
+      - horizon
+
+networks:
+  horizon:
+    name: horizon

@@ -1,17 +1,10 @@
-import { createContext, useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { getCurrentUser, logout as apiLogout, refreshToken } from '../api/auth';
 import type { UserInfo } from '../types/auth';
+import { AuthContext } from './authContextDef';
 
-export interface AuthContextType {
-  user: UserInfo | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (accessToken: string, user: UserInfo) => void;
-  logout: () => Promise<void>;
-  checkAuth: () => Promise<boolean>;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export type { AuthContextType } from './authContextDef';
+export { AuthContext } from './authContextDef';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -25,14 +18,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    try {
-      await apiLogout();
-    } catch {
-      // Ignore logout errors
-    } finally {
-      localStorage.removeItem('accessToken');
-      setUser(null);
-    }
+    await apiLogout();
+    localStorage.removeItem('accessToken');
+    setUser(null);
+
   };
 
   const checkAuth = async (): Promise<boolean> => {
