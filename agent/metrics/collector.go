@@ -133,9 +133,18 @@ func (c *Collector) updateCache() *Metrics {
 }
 
 func (c *Collector) collectCPU() float64 {
-	percentages, err := cpu.Percent(100*time.Millisecond, false)
-	if err == nil && len(percentages) > 0 {
+	percentages, err := cpu.Percent(500*time.Millisecond, false)
+	if err == nil && len(percentages) > 0 && percentages[0] > 0 {
 		c.lastCPU = round(percentages[0], 1)
+	} else if c.lastCPU == 0 {
+		perCPU, err := cpu.Percent(500*time.Millisecond, true)
+		if err == nil && len(perCPU) > 0 {
+			var total float64
+			for _, p := range perCPU {
+				total += p
+			}
+			c.lastCPU = round(total/float64(len(perCPU)), 1)
+		}
 	}
 	return c.lastCPU
 }
