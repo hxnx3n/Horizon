@@ -37,7 +37,7 @@ func Load() *Config {
 		}
 	}
 
-	cacheInterval := 200 * time.Millisecond
+	cacheInterval := 100 * time.Millisecond
 	if intervalStr := os.Getenv("CACHE_INTERVAL"); intervalStr != "" {
 		if d, err := time.ParseDuration(intervalStr); err == nil {
 			cacheInterval = d
@@ -46,7 +46,7 @@ func Load() *Config {
 
 	backendURL := os.Getenv("BACKEND_URL")
 
-	pushInterval := 500 * time.Millisecond
+	pushInterval := 250 * time.Millisecond
 	if intervalStr := os.Getenv("PUSH_INTERVAL"); intervalStr != "" {
 		if d, err := time.ParseDuration(intervalStr); err == nil {
 			pushInterval = d
