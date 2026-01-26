@@ -20,18 +20,98 @@ type Collector struct {
 
 	prevNetIO   map[string]net.IOCountersStat
 	prevNetTime time.Time
+	netMutex    sync.Mutex
+
+	prevCPUTimes []cpu.TimesStat
+	prevCPUTime  time.Time
+	cpuMutex     sync.Mutex
 
 	lastCPU  float64
 	lastTemp float64
+
+	hostInfo     *host.InfoStat
+	hostInfoOnce sync.Once
 }
 
 func NewCollector(nodeID string, interval time.Duration) *Collector {
-	return &Collector{
+	c := &Collector{
 		nodeID:        nodeID,
 		cacheInterval: interval,
 		prevNetIO:     make(map[string]net.IOCountersStat),
-		lastTemp:      45.0,
+		lastTemp:      0,
 	}
+
+	c.prevCPUTimes, _ = cpu.Times(false)
+	c.prevCPUTime = time.Now()
+
+	go c.startBackgroundCollection()
+
+	return c
+}
+
+func (c *Collector) startBackgroundCollection() {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		c.collectCPUAsync()
+		c.collectNetworkAsync()
+	}
+}
+
+func (c *Collector) collectCPUAsync() {
+	c.cpuMutex.Lock()
+	defer c.cpuMutex.Unlock()
+
+	currentTimes, err := cpu.Times(false)
+	if err != nil || len(currentTimes) == 0 {
+		return
+	}
+
+	if len(c.prevCPUTimes) > 0 {
+		prev := c.prevCPUTimes[0]
+		curr := currentTimes[0]
+
+		prevTotal := prev.User + prev.System + prev.Idle + prev.Nice + prev.Iowait + prev.Irq + prev.Softirq + prev.Steal
+		currTotal := curr.User + curr.System + curr.Idle + curr.Nice + curr.Iowait + curr.Irq + curr.Softirq + curr.Steal
+
+		prevIdle := prev.Idle + prev.Iowait
+		currIdle := curr.Idle + curr.Iowait
+
+		totalDelta := currTotal - prevTotal
+		idleDelta := currIdle - prevIdle
+
+		if totalDelta > 0 {
+			c.lastCPU = round((1.0-idleDelta/totalDelta)*100.0, 1)
+		}
+	}
+
+	c.prevCPUTimes = currentTimes
+	c.prevCPUTime = time.Now()
+}
+
+func (c *Collector) collectNetworkAsync() {
+	c.netMutex.Lock()
+	defer c.netMutex.Unlock()
+
+	netIOs, err := net.IOCounters(true)
+	if err != nil {
+		return
+	}
+
+	now := time.Now()
+	if c.prevNetTime.IsZero() {
+		for _, io := range netIOs {
+			c.prevNetIO[io.Name] = io
+		}
+		c.prevNetTime = now
+		return
+	}
+
+	for _, io := range netIOs {
+		c.prevNetIO[io.Name] = io
+	}
+	c.prevNetTime = now
 }
 
 func (c *Collector) GetMetrics() *Metrics {
@@ -53,32 +133,73 @@ func (c *Collector) updateCache() *Metrics {
 
 	now := time.Now()
 
-	hInfo, _ := host.Info()
-	vMem, _ := mem.VirtualMemory()
+	c.hostInfoOnce.Do(func() {
+		c.hostInfo, _ = host.Info()
+	})
+
+	var osName, platform string
+	if c.hostInfo != nil {
+		osName = c.hostInfo.OS
+		platform = c.hostInfo.Platform
+	}
+
+	var memUsage float64
+	var memTotal, memUsed uint64
+	if vMem, err := mem.VirtualMemory(); err == nil {
+		memUsage = round(vMem.UsedPercent, 1)
+		memTotal = vMem.Total
+		memUsed = vMem.Used
+	}
 
 	m := &Metrics{
 		NodeID:     c.nodeID,
-		OS:         hInfo.OS,
-		Platform:   hInfo.Platform,
-		CPU:        c.collectCPU(),
+		OS:         osName,
+		Platform:   platform,
+		CPU:        c.getCPU(),
 		Temp:       c.collectTemp(),
-		MemUsage:   round(vMem.UsedPercent, 1),
-		MemTotal:   vMem.Total,
-		MemUsed:    vMem.Used,
-		Disks:      make([]DiskMetrics, 0),
-		Interfaces: make([]InterfaceMetrics, 0),
+		MemUsage:   memUsage,
+		MemTotal:   memTotal,
+		MemUsed:    memUsed,
+		Disks:      c.collectDisks(),
+		Interfaces: c.collectInterfaces(now),
 		Status:     "RUNNING",
 		Timestamp:  now.UTC(),
 	}
 
-	partitions, _ := disk.Partitions(false)
+	c.cache = m
+	c.lastUpdate = now
+
+	ret := *m
+	return &ret
+}
+
+func (c *Collector) getCPU() float64 {
+	c.cpuMutex.Lock()
+	defer c.cpuMutex.Unlock()
+	return c.lastCPU
+}
+
+func (c *Collector) collectDisks() []DiskMetrics {
+	disks := make([]DiskMetrics, 0)
+
+	partitions, err := disk.Partitions(false)
+	if err != nil {
+		return disks
+	}
+
+	seen := make(map[string]bool)
 	for _, p := range partitions {
+		if seen[p.Device] {
+			continue
+		}
+
 		usage, err := disk.Usage(p.Mountpoint)
 		if err != nil || usage.Total == 0 {
 			continue
 		}
 
-		m.Disks = append(m.Disks, DiskMetrics{
+		seen[p.Device] = true
+		disks = append(disks, DiskMetrics{
 			Device:     p.Device,
 			Mountpoint: p.Mountpoint,
 			TotalBytes: usage.Total,
@@ -86,6 +207,12 @@ func (c *Collector) updateCache() *Metrics {
 			Usage:      round(usage.UsedPercent, 1),
 		})
 	}
+
+	return disks
+}
+
+func (c *Collector) collectInterfaces(now time.Time) []InterfaceMetrics {
+	interfaces := make([]InterfaceMetrics, 0)
 
 	ipMap := make(map[string][]string)
 	ifaces, _ := net.Interfaces()
@@ -97,11 +224,20 @@ func (c *Collector) updateCache() *Metrics {
 		ipMap[iface.Name] = ips
 	}
 
-	netIOs, _ := net.IOCounters(true)
+	c.netMutex.Lock()
+	defer c.netMutex.Unlock()
+
+	netIOs, err := net.IOCounters(true)
+	if err != nil {
+		return interfaces
+	}
+
 	var duration float64
 	if !c.prevNetTime.IsZero() {
 		duration = now.Sub(c.prevNetTime).Seconds()
 	}
+
+	newPrevNetIO := make(map[string]net.IOCountersStat)
 
 	for _, io := range netIOs {
 		if io.Name == "" {
@@ -116,41 +252,28 @@ func (c *Collector) updateCache() *Metrics {
 		}
 
 		if prev, ok := c.prevNetIO[io.Name]; ok && duration > 0 {
-			iface.SentRate = round(float64(io.BytesSent-prev.BytesSent)/1024/duration, 2)
-			iface.RecvRate = round(float64(io.BytesRecv-prev.BytesRecv)/1024/duration, 2)
+			sentDiff := io.BytesSent - prev.BytesSent
+			recvDiff := io.BytesRecv - prev.BytesRecv
+			iface.SentRate = round(float64(sentDiff)/duration, 2)
+			iface.RecvRate = round(float64(recvDiff)/duration, 2)
 		}
 
-		m.Interfaces = append(m.Interfaces, iface)
-		c.prevNetIO[io.Name] = io
+		interfaces = append(interfaces, iface)
+		newPrevNetIO[io.Name] = io
 	}
 
+	c.prevNetIO = newPrevNetIO
 	c.prevNetTime = now
-	c.cache = m
-	c.lastUpdate = now
 
-	ret := *m
-	return &ret
-}
-
-func (c *Collector) collectCPU() float64 {
-	percentages, err := cpu.Percent(500*time.Millisecond, false)
-	if err == nil && len(percentages) > 0 && percentages[0] > 0 {
-		c.lastCPU = round(percentages[0], 1)
-	} else if c.lastCPU == 0 {
-		perCPU, err := cpu.Percent(500*time.Millisecond, true)
-		if err == nil && len(perCPU) > 0 {
-			var total float64
-			for _, p := range perCPU {
-				total += p
-			}
-			c.lastCPU = round(total/float64(len(perCPU)), 1)
-		}
-	}
-	return c.lastCPU
+	return interfaces
 }
 
 func (c *Collector) collectTemp() float64 {
-	temps, _ := host.SensorsTemperatures()
+	temps, err := host.SensorsTemperatures()
+	if err != nil {
+		return c.lastTemp
+	}
+
 	var total float64
 	var count int
 	for _, t := range temps {
@@ -159,9 +282,11 @@ func (c *Collector) collectTemp() float64 {
 			count++
 		}
 	}
+
 	if count > 0 {
 		c.lastTemp = round(total/float64(count), 1)
 	}
+
 	return c.lastTemp
 }
 

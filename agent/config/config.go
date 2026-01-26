@@ -12,6 +12,9 @@ type Config struct {
 	Port          int
 	NodeID        string
 	CacheInterval time.Duration
+	BackendURL    string
+	PushInterval  time.Duration
+	PushEnabled   bool
 }
 
 func Load() *Config {
@@ -34,16 +37,36 @@ func Load() *Config {
 		}
 	}
 
-	cacheInterval := 1 * time.Second
+	cacheInterval := 200 * time.Millisecond
 	if intervalStr := os.Getenv("CACHE_INTERVAL"); intervalStr != "" {
 		if d, err := time.ParseDuration(intervalStr); err == nil {
 			cacheInterval = d
 		}
 	}
 
+	backendURL := os.Getenv("BACKEND_URL")
+
+	pushInterval := 500 * time.Millisecond
+	if intervalStr := os.Getenv("PUSH_INTERVAL"); intervalStr != "" {
+		if d, err := time.ParseDuration(intervalStr); err == nil {
+			pushInterval = d
+		}
+	}
+
+	pushEnabled := false
+	if enabledStr := os.Getenv("PUSH_ENABLED"); enabledStr != "" {
+		pushEnabled = enabledStr == "true" || enabledStr == "1"
+	}
+	if backendURL != "" && !pushEnabled {
+		pushEnabled = true
+	}
+
 	return &Config{
 		Port:          port,
 		NodeID:        nodeID,
 		CacheInterval: cacheInterval,
+		BackendURL:    backendURL,
+		PushInterval:  pushInterval,
+		PushEnabled:   pushEnabled,
 	}
 }
