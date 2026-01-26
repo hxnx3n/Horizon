@@ -6,7 +6,7 @@ spring:
     active: dev
 
   datasource:
-    url: jdbc:postgresql://10.0.0.2:5432/dev?currentSchema=public
+    url: jdbc:postgresql://10.0.0.2:5432/horizon?currentSchema=public
     driver-class-name: org.postgresql.Driver
     username: admin
     password: hxnx
@@ -24,7 +24,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
 
   jackson:
@@ -52,3 +51,12 @@ jwt:
   secret: your-256-bit-secret-key-here-change-in-production-environment
   expiration: 3600000
   refresh-expiration: 604800000
+
+metrics:
+  retention-days: 7
+
+agent:
+  port: 9090
+  polling:
+    interval: 1000
+    timeout: 3000

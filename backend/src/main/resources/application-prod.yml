@@ -17,12 +17,12 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
         format_sql: false
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
 
   data:
     redis:
@@ -36,10 +36,22 @@ jwt:
 
 server:
   port: 8080
+  servlet:
+    context-path: /api
 
 logging:
   level:
     root: WARN
     com.horizon.backend: INFO
+    org.hibernate.SQL: WARN
   file:
     name: logs/horizon-backend.log
+
+metrics:
+  retention-days: 7
+
+agent:
+  port: 9090
+  polling:
+    interval: 1000
+    timeout: 3000

@@ -28,6 +28,14 @@ public class Agent {
 
     @Column(nullable = false)
     @Builder.Default
+    private Integer port = 9090;
+
+    @Column(name = "polling_interval", nullable = false)
+    @Builder.Default
+    private Long pollingInterval = 1000L;
+
+    @Column(nullable = false)
+    @Builder.Default
     private boolean enabled = true;
 
     @CreationTimestamp

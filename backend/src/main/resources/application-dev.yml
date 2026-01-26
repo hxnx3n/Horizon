@@ -4,7 +4,7 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:postgresql://10.0.0.2:5432/dev?currentSchema=public
+    url: jdbc:postgresql://10.0.0.2:5432/horizon?currentSchema=public
     driver-class-name: org.postgresql.Driver
     username: admin
     password: hxnx
@@ -21,7 +21,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: public
 
   data:
@@ -44,3 +43,6 @@ jwt:
 
 server:
   port: 8080
+
+metrics:
+  retention-days: 1

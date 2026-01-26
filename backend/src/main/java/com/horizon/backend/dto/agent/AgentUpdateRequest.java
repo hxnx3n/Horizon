@@ -1,5 +1,7 @@
 package com.horizon.backend.dto.agent;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -21,6 +23,13 @@ public class AgentUpdateRequest {
             message = "Invalid IP address format"
     )
     private String ip;
+
+    @Min(value = 1, message = "Port must be at least 1")
+    @Max(value = 65535, message = "Port must be at most 65535")
+    private Integer port;
+
+    @Min(value = 100, message = "Polling interval must be at least 100ms")
+    private Long pollingInterval;
 
     private Boolean enabled;
 }

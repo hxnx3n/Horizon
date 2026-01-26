@@ -17,6 +17,8 @@ public class AgentDto {
     private Long id;
     private String name;
     private String ip;
+    private Integer port;
+    private Long pollingInterval;
     private boolean enabled;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -26,6 +28,8 @@ public class AgentDto {
                 .id(agent.getId())
                 .name(agent.getName())
                 .ip(agent.getIp())
+                .port(agent.getPort())
+                .pollingInterval(agent.getPollingInterval())
                 .enabled(agent.isEnabled())
                 .createdAt(agent.getCreatedAt())
                 .updatedAt(agent.getUpdatedAt())

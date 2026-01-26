@@ -36,6 +36,8 @@ public class AgentServiceImpl implements AgentService {
         Agent agent = Agent.builder()
                 .name(request.getName())
                 .ip(request.getIp())
+                .port(request.getPort() != null ? request.getPort() : 9090)
+                .pollingInterval(request.getPollingInterval() != null ? request.getPollingInterval() : 1000L)
                 .enabled(true)
                 .build();
 
@@ -103,6 +105,14 @@ public class AgentServiceImpl implements AgentService {
                 throw new DuplicateResourceException("Agent", "ip", request.getIp());
             }
             agent.setIp(request.getIp());
+        }
+
+        if (request.getPort() != null) {
+            agent.setPort(request.getPort());
+        }
+
+        if (request.getPollingInterval() != null) {
+            agent.setPollingInterval(request.getPollingInterval());
         }
 
         if (request.getEnabled() != null) {
