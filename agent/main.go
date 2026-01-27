@@ -19,8 +19,8 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		runPushMode()
-		return
+		cmd.PrintUsage()
+		os.Exit(1)
 	}
 
 	command := os.Args[1]
@@ -65,8 +65,12 @@ func runPushMode() {
 
 	if authConfig == nil {
 		fmt.Println("Agent is not authenticated.")
-		fmt.Println("Run 'horizon-agent auth <key>' to authenticate first.")
-		fmt.Println("Or set HORIZON_KEY environment variable.")
+		fmt.Println()
+		fmt.Println("To authenticate, run:")
+		fmt.Println("  horizon-agent auth <your-api-key> <server-url>")
+		fmt.Println()
+		fmt.Println("Example:")
+		fmt.Println("  horizon-agent auth hzn_abc123 http://localhost:8080")
 		os.Exit(1)
 	}
 
