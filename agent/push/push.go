@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hxnx3n/Horizon/agent/config"
 	"github.com/hxnx3n/Horizon/agent/metrics"
 )
 
@@ -49,18 +48,20 @@ type PushRequest struct {
 }
 
 type MetricsPayload struct {
-	NodeID     string                     `json:"nodeId"`
-	OS         string                     `json:"os"`
-	Platform   string                     `json:"platform"`
-	CPU        float64                    `json:"cpu"`
-	Temp       float64                    `json:"temp"`
-	MemUsage   float64                    `json:"memUsage"`
-	MemTotal   uint64                     `json:"memTotal"`
-	MemUsed    uint64                     `json:"memUsed"`
-	Disks      []metrics.DiskMetrics      `json:"disks"`
-	Interfaces []metrics.InterfaceMetrics `json:"interfaces"`
-	Status     string                     `json:"status"`
-	Timestamp  string                     `json:"timestamp"`
+	NodeID       string                     `json:"nodeId"`
+	OS           string                     `json:"os"`
+	Platform     string                     `json:"platform"`
+	CPU          float64                    `json:"cpuUsage"`
+	Temp         float64                    `json:"temperature"`
+	MemUsage     float64                    `json:"memUsage"`
+	MemTotal     uint64                     `json:"memoryTotal"`
+	MemUsed      uint64                     `json:"memoryUsed"`
+	Disks        []metrics.DiskMetrics      `json:"disks"`
+	Interfaces   []metrics.InterfaceMetrics `json:"interfaces"`
+	Uptime       uint64                     `json:"uptimeSeconds"`
+	ProcessCount uint64                     `json:"processCount"`
+	Status       string                     `json:"status"`
+	Timestamp    string                     `json:"timestamp"`
 }
 
 func NewPushClient(serverURL, key string, collector *metrics.Collector, interval time.Duration) *PushClient {
@@ -126,18 +127,20 @@ func (c *PushClient) PushMetrics() error {
 	m := c.collector.GetMetrics()
 
 	payload := &MetricsPayload{
-		NodeID:     m.NodeID,
-		OS:         m.OS,
-		Platform:   m.Platform,
-		CPU:        m.CPU,
-		Temp:       m.Temp,
-		MemUsage:   m.MemUsage,
-		MemTotal:   m.MemTotal,
-		MemUsed:    m.MemUsed,
-		Disks:      m.Disks,
-		Interfaces: m.Interfaces,
-		Status:     m.Status,
-		Timestamp:  m.Timestamp.UTC().Format(time.RFC3339),
+		NodeID:       m.NodeID,
+		OS:           m.OS,
+		Platform:     m.Platform,
+		CPU:          m.CPU,
+		Temp:         m.Temp,
+		MemUsage:     m.MemUsage,
+		MemTotal:     m.MemTotal,
+		MemUsed:      m.MemUsed,
+		Disks:        m.Disks,
+		Interfaces:   m.Interfaces,
+		Uptime:       m.Uptime,
+		ProcessCount: m.ProcessCount,
+		Status:       m.Status,
+		Timestamp:    m.Timestamp.UTC().Format(time.RFC3339),
 	}
 
 	reqBody := PushRequest{
@@ -237,13 +240,4 @@ func ValidateKey(serverURL, key string) error {
 	}
 
 	return nil
-}
-
-func StoreAuthConfig(serverURL, key string) error {
-	authConfig := &config.AuthConfig{
-		Key:        key,
-		ServerURL:  serverURL,
-		Registered: true,
-	}
-	return config.SaveAuthConfig(authConfig)
 }

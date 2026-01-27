@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/hxnx3n/Horizon/agent/config"
@@ -15,58 +16,102 @@ Usage:
   horizon-agent [command] [options]
 
 Commands:
-  auth <key> <server-url>    Register this agent with the given authentication key
+  auth <client-key> <server-url>   Register this node with a client key
+  run [-d]                         Start pushing metrics (-d: daemon mode)
+  restart                          Restart the agent service
+  stop                             Stop the running agent
+  status                           Show agent and service status
+  deauth                           Remove authentication and unregister
+  version                          Show version information
 
-  run [-d]                   Start pushing metrics to the server
-                             -d: Run as daemon (background mode)
-
-  status                     Show current authentication status
-
-  deauth                     Remove authentication configuration
-
-  install                    Install as systemd service (Linux, requires sudo)
-
-  uninstall                  Remove systemd service (Linux, requires sudo)
-
-  update                     Update to the latest version
-
-  version                    Show version information
+Service Commands (Linux, requires sudo):
+  install                          Install as systemd service
+  uninstall                        Remove systemd service
 
 Examples:
   horizon-agent auth hzn_abc123def456 http://myserver:8080
   horizon-agent run
   horizon-agent run -d
   sudo horizon-agent install
-  horizon-agent status
-  horizon-agent update`, Version)
+  horizon-agent status`, Version)
 	fmt.Println()
 }
 
 func RunAuth(args []string) error {
 	if len(args) < 2 {
-		return fmt.Errorf("missing arguments\nUsage: horizon-agent auth <key> <server-url>")
+		return fmt.Errorf("missing arguments\nUsage: horizon-agent auth <client-key> <server-url>")
 	}
 
 	key := args[0]
 	serverURL := strings.TrimSuffix(args[1], "/")
 
-	fmt.Printf("Validating key with server %s...\n", serverURL)
+	existingConfig, err := config.LoadAuthConfig()
+	if err != nil {
+		return fmt.Errorf("failed to check existing config: %w", err)
+	}
+
+	nodeID := getNodeID()
+
+	if existingConfig != nil && existingConfig.Registered {
+		if existingConfig.Key == key && existingConfig.ServerURL == serverURL {
+			fmt.Println("✓ Already authenticated with the same configuration.")
+			fmt.Printf("  Server: %s\n", serverURL)
+			fmt.Printf("  Node: %s\n", existingConfig.NodeID)
+			return nil
+		}
+
+		fmt.Println("Warning: Agent is already authenticated.")
+		fmt.Printf("  Current Server: %s\n", existingConfig.ServerURL)
+		fmt.Printf("  Current Node: %s\n", existingConfig.NodeID)
+		fmt.Println()
+		fmt.Print("Do you want to re-authenticate with new settings? (y/N): ")
+
+		var response string
+		fmt.Scanln(&response)
+		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+			fmt.Println("Authentication cancelled.")
+			return nil
+		}
+	}
+
+	fmt.Printf("Validating client key with server %s...\n", serverURL)
 
 	if err := push.ValidateKey(serverURL, key); err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
 
-	if err := push.StoreAuthConfig(serverURL, key); err != nil {
+	authConfig := &config.AuthConfig{
+		Key:        key,
+		ServerURL:  serverURL,
+		NodeID:     nodeID,
+		Registered: true,
+	}
+
+	if err := config.SaveAuthConfig(authConfig); err != nil {
 		return fmt.Errorf("failed to save authentication config: %w", err)
 	}
 
 	fmt.Println("✓ Authentication successful!")
 	fmt.Printf("  Server: %s\n", serverURL)
+	fmt.Printf("  Node ID: %s\n", nodeID)
 	fmt.Printf("  Key: %s...%s\n", key[:8], key[len(key)-4:])
-	fmt.Printf("  Config saved to: %s\n", config.GetAuthConfigPath())
+	fmt.Printf("  Config: %s\n", config.GetAuthConfigPath())
 	fmt.Println("\nRun 'horizon-agent run' to start pushing metrics.")
 
 	return nil
+}
+
+func getNodeID() string {
+	nodeID := os.Getenv("NODE_ID")
+	if nodeID == "" {
+		hostname, err := os.Hostname()
+		if err != nil {
+			nodeID = "unknown"
+		} else {
+			nodeID = hostname
+		}
+	}
+	return nodeID
 }
 
 func RunDeauth() error {
@@ -75,16 +120,19 @@ func RunDeauth() error {
 		return fmt.Errorf("failed to load auth config: %w", err)
 	}
 
-	if authConfig == nil {
+	if authConfig == nil || !authConfig.Registered {
 		fmt.Println("No authentication configured.")
 		return nil
 	}
+
+	fmt.Printf("Removing authentication for node: %s\n", authConfig.NodeID)
 
 	if err := config.DeleteAuthConfig(); err != nil {
 		return fmt.Errorf("failed to remove auth config: %w", err)
 	}
 
 	fmt.Println("✓ Authentication removed successfully.")
+	fmt.Println("  The agent will no longer push metrics to the server.")
 	return nil
 }
 
@@ -94,20 +142,29 @@ func RunStatus() error {
 		return fmt.Errorf("failed to load auth config: %w", err)
 	}
 
+	fmt.Println("=== Horizon Agent Status ===")
+	fmt.Println()
+
 	if authConfig == nil || !authConfig.Registered {
-		fmt.Println("Status: Not authenticated")
-		fmt.Println("\nRun 'horizon-agent auth <key> <server-url>' to authenticate.")
-		return nil
+		fmt.Println("Authentication: Not configured")
+		fmt.Println("\nRun 'horizon-agent auth <client-key> <server-url>' to authenticate.")
+	} else {
+		fmt.Println("Authentication: Configured")
+		fmt.Printf("  Server: %s\n", authConfig.ServerURL)
+		fmt.Printf("  Node ID: %s\n", authConfig.NodeID)
+		if len(authConfig.Key) > 12 {
+			fmt.Printf("  Key: %s...%s\n", authConfig.Key[:8], authConfig.Key[len(authConfig.Key)-4:])
+		}
+		fmt.Printf("  Config: %s\n", config.GetAuthConfigPath())
 	}
 
-	fmt.Println("Status: Authenticated")
-	fmt.Printf("  Server: %s\n", authConfig.ServerURL)
-	if len(authConfig.Key) > 12 {
-		fmt.Printf("  Key: %s...%s\n", authConfig.Key[:8], authConfig.Key[len(authConfig.Key)-4:])
-	}
-	fmt.Printf("  Config: %s\n", config.GetAuthConfigPath())
+	RunServiceStatus()
 
 	return nil
+}
+
+func RunStop() error {
+	return stopRunningAgent()
 }
 
 func GetAuthConfig() (*config.AuthConfig, error) {

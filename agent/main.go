@@ -53,8 +53,14 @@ func main() {
 			runPushMode()
 		}
 
-	case "update":
-		if err := cmd.RunUpdate(); err != nil {
+	case "restart":
+		if err := cmd.RunRestart(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "stop":
+		if err := cmd.RunStop(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

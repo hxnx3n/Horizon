@@ -36,38 +36,32 @@ func RunInstall() error {
 		return fmt.Errorf("this command requires root privileges. Run with sudo")
 	}
 
-	// Get executable path
 	executable, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("failed to get executable path: %w", err)
 	}
 
-	// Check if already authenticated
 	authConfig, err := GetAuthConfig()
 	if err != nil {
 		return fmt.Errorf("failed to check auth config: %w", err)
 	}
 	if authConfig == nil {
-		return fmt.Errorf("agent is not authenticated. Run 'horizon-agent auth <key> <server-url>' first")
+		return fmt.Errorf("agent is not authenticated. Run 'horizon-agent auth <client-key> <server-url>' first")
 	}
 
-	// Create systemd service file
 	serviceContent := fmt.Sprintf(systemdServiceTemplate, executable)
 	if err := os.WriteFile(serviceFilePath, []byte(serviceContent), 0644); err != nil {
 		return fmt.Errorf("failed to create service file: %w", err)
 	}
 
-	// Reload systemd
 	if err := runCommand("systemctl", "daemon-reload"); err != nil {
 		return fmt.Errorf("failed to reload systemd: %w", err)
 	}
 
-	// Enable service
 	if err := runCommand("systemctl", "enable", serviceName); err != nil {
 		return fmt.Errorf("failed to enable service: %w", err)
 	}
 
-	// Start service
 	if err := runCommand("systemctl", "start", serviceName); err != nil {
 		return fmt.Errorf("failed to start service: %w", err)
 	}
@@ -75,11 +69,9 @@ func RunInstall() error {
 	fmt.Println("✓ Horizon Agent service installed successfully!")
 	fmt.Println()
 	fmt.Println("Service commands:")
-	fmt.Println("  sudo systemctl status horizon-agent   # Check status")
-	fmt.Println("  sudo systemctl stop horizon-agent     # Stop service")
-	fmt.Println("  sudo systemctl start horizon-agent    # Start service")
-	fmt.Println("  sudo systemctl restart horizon-agent  # Restart service")
-	fmt.Println("  sudo journalctl -u horizon-agent -f   # View logs")
+	fmt.Println("  horizon-agent status    # Check status")
+	fmt.Println("  horizon-agent restart   # Restart service")
+	fmt.Println("  horizon-agent stop      # Stop service")
 
 	return nil
 }
@@ -93,18 +85,13 @@ func RunUninstall() error {
 		return fmt.Errorf("this command requires root privileges. Run with sudo")
 	}
 
-	// Stop service (ignore error if not running)
 	runCommand("systemctl", "stop", serviceName)
-
-	// Disable service
 	runCommand("systemctl", "disable", serviceName)
 
-	// Remove service file
 	if err := os.Remove(serviceFilePath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove service file: %w", err)
 	}
 
-	// Reload systemd
 	if err := runCommand("systemctl", "daemon-reload"); err != nil {
 		return fmt.Errorf("failed to reload systemd: %w", err)
 	}
@@ -114,31 +101,74 @@ func RunUninstall() error {
 	return nil
 }
 
-func RunServiceStatus() error {
-	if runtime.GOOS != "linux" {
-		return fmt.Errorf("service status is only supported on Linux")
+func RunRestart() error {
+	if runtime.GOOS == "linux" {
+		if _, err := os.Stat(serviceFilePath); err == nil {
+			if os.Geteuid() != 0 {
+				return fmt.Errorf("restarting service requires root privileges. Run with sudo")
+			}
+			if err := runCommand("systemctl", "restart", serviceName); err != nil {
+				return fmt.Errorf("failed to restart service: %w", err)
+			}
+			fmt.Println("✓ Service restarted successfully!")
+			return nil
+		}
 	}
 
-	// Check if service file exists
-	if _, err := os.Stat(serviceFilePath); os.IsNotExist(err) {
-		fmt.Println("Service: Not installed")
-		fmt.Println("\nRun 'sudo horizon-agent install' to install as a service.")
+	if err := stopRunningAgent(); err != nil {
+		fmt.Printf("Note: %v\n", err)
+	}
+	fmt.Println("Run 'horizon-agent run' or 'horizon-agent run -d' to start again.")
+	return nil
+}
+
+func RunServiceStatus() error {
+	if runtime.GOOS != "linux" {
 		return nil
 	}
 
-	// Get service status
+	fmt.Println()
+	if _, err := os.Stat(serviceFilePath); os.IsNotExist(err) {
+		fmt.Println("Service: Not installed")
+		return nil
+	}
+
 	output, err := exec.Command("systemctl", "is-active", serviceName).Output()
 	status := strings.TrimSpace(string(output))
 
 	if err != nil || status != "active" {
-		fmt.Println("Service: Installed but not running")
-		fmt.Printf("Status: %s\n", status)
+		fmt.Printf("Service: Installed (status: %s)\n", status)
 	} else {
 		fmt.Println("Service: Running")
 	}
 
-	fmt.Println("\nUse 'sudo systemctl status horizon-agent' for detailed status.")
+	return nil
+}
 
+func stopRunningAgent() error {
+	if runtime.GOOS == "linux" {
+		if _, err := os.Stat(serviceFilePath); err == nil {
+			output, _ := exec.Command("systemctl", "is-active", serviceName).Output()
+			if strings.TrimSpace(string(output)) == "active" {
+				if os.Geteuid() != 0 {
+					return fmt.Errorf("stopping service requires root privileges. Run with sudo")
+				}
+				if err := runCommand("systemctl", "stop", serviceName); err != nil {
+					return fmt.Errorf("failed to stop service: %w", err)
+				}
+				fmt.Println("✓ Service stopped successfully!")
+				return nil
+			}
+		}
+	}
+
+	if runtime.GOOS == "windows" {
+		exec.Command("taskkill", "/F", "/IM", "horizon-agent.exe").Run()
+	} else {
+		exec.Command("pkill", "-f", "horizon-agent").Run()
+	}
+
+	fmt.Println("✓ Stop signal sent to running agents.")
 	return nil
 }
 

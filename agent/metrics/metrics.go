@@ -37,6 +37,9 @@ type Metrics struct {
 
 	Interfaces []InterfaceMetrics `json:"interfaces"`
 
+	Uptime       uint64 `json:"uptimeSeconds"`
+	ProcessCount uint64 `json:"processCount"`
+
 	Status    string    `json:"status"`
 	Timestamp time.Time `json:"-"`
 }

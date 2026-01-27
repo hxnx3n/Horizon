@@ -138,9 +138,15 @@ func (c *Collector) updateCache() *Metrics {
 	})
 
 	var osName, platform string
+	var uptime, processCount uint64
 	if c.hostInfo != nil {
 		osName = c.hostInfo.OS
 		platform = c.hostInfo.Platform
+	}
+
+	if info, err := host.Info(); err == nil {
+		uptime = info.Uptime
+		processCount = info.Procs
 	}
 
 	var memUsage float64
@@ -152,18 +158,20 @@ func (c *Collector) updateCache() *Metrics {
 	}
 
 	m := &Metrics{
-		NodeID:     c.nodeID,
-		OS:         osName,
-		Platform:   platform,
-		CPU:        c.getCPU(),
-		Temp:       c.collectTemp(),
-		MemUsage:   memUsage,
-		MemTotal:   memTotal,
-		MemUsed:    memUsed,
-		Disks:      c.collectDisks(),
-		Interfaces: c.collectInterfaces(now),
-		Status:     "RUNNING",
-		Timestamp:  now.UTC(),
+		NodeID:       c.nodeID,
+		OS:           osName,
+		Platform:     platform,
+		CPU:          c.getCPU(),
+		Temp:         c.collectTemp(),
+		MemUsage:     memUsage,
+		MemTotal:     memTotal,
+		MemUsed:      memUsed,
+		Disks:        c.collectDisks(),
+		Interfaces:   c.collectInterfaces(now),
+		Uptime:       uptime,
+		ProcessCount: processCount,
+		Status:       "RUNNING",
+		Timestamp:    now.UTC(),
 	}
 
 	c.cache = m
