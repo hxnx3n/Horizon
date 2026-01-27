@@ -11,6 +11,11 @@ import (
 	"github.com/shirou/gopsutil/v3/net"
 )
 
+type netRateData struct {
+	sentRate float64
+	recvRate float64
+}
+
 type Collector struct {
 	nodeID        string
 	cache         *Metrics
@@ -19,6 +24,7 @@ type Collector struct {
 	lastUpdate    time.Time
 
 	prevNetIO   map[string]net.IOCountersStat
+	netRates    map[string]netRateData
 	prevNetTime time.Time
 	netMutex    sync.Mutex
 
@@ -38,6 +44,7 @@ func NewCollector(nodeID string, interval time.Duration) *Collector {
 		nodeID:        nodeID,
 		cacheInterval: interval,
 		prevNetIO:     make(map[string]net.IOCountersStat),
+		netRates:      make(map[string]netRateData),
 		lastTemp:      0,
 	}
 
@@ -108,8 +115,19 @@ func (c *Collector) collectNetworkAsync() {
 		return
 	}
 
-	for _, io := range netIOs {
-		c.prevNetIO[io.Name] = io
+	duration := now.Sub(c.prevNetTime).Seconds()
+	if duration > 0 {
+		for _, io := range netIOs {
+			if prev, ok := c.prevNetIO[io.Name]; ok {
+				sentDiff := io.BytesSent - prev.BytesSent
+				recvDiff := io.BytesRecv - prev.BytesRecv
+				c.netRates[io.Name] = netRateData{
+					sentRate: round(float64(sentDiff)/duration, 2),
+					recvRate: round(float64(recvDiff)/duration, 2),
+				}
+			}
+			c.prevNetIO[io.Name] = io
+		}
 	}
 	c.prevNetTime = now
 }
@@ -242,13 +260,6 @@ func (c *Collector) collectInterfaces(now time.Time) []InterfaceMetrics {
 		return interfaces
 	}
 
-	var duration float64
-	if !c.prevNetTime.IsZero() {
-		duration = now.Sub(c.prevNetTime).Seconds()
-	}
-
-	newPrevNetIO := make(map[string]net.IOCountersStat)
-
 	for _, io := range netIOs {
 		if io.Name == "" {
 			continue
@@ -261,19 +272,13 @@ func (c *Collector) collectInterfaces(now time.Time) []InterfaceMetrics {
 			RecvBytes: io.BytesRecv,
 		}
 
-		if prev, ok := c.prevNetIO[io.Name]; ok && duration > 0 {
-			sentDiff := io.BytesSent - prev.BytesSent
-			recvDiff := io.BytesRecv - prev.BytesRecv
-			iface.SentRate = round(float64(sentDiff)/duration, 2)
-			iface.RecvRate = round(float64(recvDiff)/duration, 2)
+		if rate, ok := c.netRates[io.Name]; ok {
+			iface.SentRate = rate.sentRate
+			iface.RecvRate = rate.recvRate
 		}
 
 		interfaces = append(interfaces, iface)
-		newPrevNetIO[io.Name] = io
 	}
-
-	c.prevNetIO = newPrevNetIO
-	c.prevNetTime = now
 
 	return interfaces
 }
