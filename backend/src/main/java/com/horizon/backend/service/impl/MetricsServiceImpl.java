@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -42,15 +43,6 @@ public class MetricsServiceImpl implements MetricsService {
     public MetricsDto saveMetrics(Long agentId, MetricsRequest request) {
         Agent agent = agentRepository.findById(agentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Agent", "id", agentId));
-
-        return saveMetricsInternal(agent, request);
-    }
-
-    @Override
-    @Transactional
-    public MetricsDto saveMetricsByIp(String agentIp, MetricsRequest request) {
-        Agent agent = agentRepository.findByIp(agentIp)
-                .orElseThrow(() -> new ResourceNotFoundException("Agent", "ip", agentIp));
 
         return saveMetricsInternal(agent, request);
     }
@@ -79,10 +71,37 @@ public class MetricsServiceImpl implements MetricsService {
 
         AgentMetrics savedMetrics = agentMetricsRepository.save(metrics);
 
+        List<RealtimeMetrics.DiskInfo> diskInfos = null;
+        if (request.getDisks() != null) {
+            diskInfos = request.getDisks().stream()
+                    .map(d -> RealtimeMetrics.DiskInfo.builder()
+                            .device(d.getDevice())
+                            .mountpoint(d.getMountpoint())
+                            .totalBytes(d.getTotalBytes())
+                            .usedBytes(d.getUsedBytes())
+                            .usage(d.getUsage())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        List<RealtimeMetrics.NetworkInterfaceInfo> interfaceInfos = null;
+        if (request.getInterfaces() != null) {
+            interfaceInfos = request.getInterfaces().stream()
+                    .map(i -> RealtimeMetrics.NetworkInterfaceInfo.builder()
+                            .name(i.getName())
+                            .ips(i.getIps())
+                            .sentBytes(i.getSentBytes())
+                            .recvBytes(i.getRecvBytes())
+                            .sentRate(i.getSentRate())
+                            .recvRate(i.getRecvRate())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
         RealtimeMetrics realtimeMetrics = RealtimeMetrics.builder()
                 .agentId(agent.getId())
                 .agentName(agent.getName())
-                .agentIp(agent.getIp())
+                .hostname(agent.getHostname())
                 .online(true)
                 .cpuUsage(request.getCpuUsage())
                 .memoryTotal(request.getMemoryTotal())
@@ -93,18 +112,26 @@ public class MetricsServiceImpl implements MetricsService {
                 .diskUsage(diskUsage)
                 .networkRxBytes(request.getNetworkRxBytes())
                 .networkTxBytes(request.getNetworkTxBytes())
+                .networkRxRate(request.getNetworkRxRate())
+                .networkTxRate(request.getNetworkTxRate())
                 .loadAverage1m(request.getLoadAverage1m())
                 .loadAverage5m(request.getLoadAverage5m())
                 .loadAverage15m(request.getLoadAverage15m())
                 .processCount(request.getProcessCount())
                 .uptimeSeconds(request.getUptimeSeconds())
+                .temperature(request.getTemperature())
+                .nodeId(request.getNodeId())
+                .os(request.getOs())
+                .platform(request.getPlatform())
+                .disks(diskInfos)
+                .interfaces(interfaceInfos)
                 .timestamp(LocalDateTime.now())
                 .lastHeartbeat(LocalDateTime.now())
                 .build();
 
         saveToRedis(agent.getId(), realtimeMetrics);
 
-        log.debug("Metrics saved for agent: {} ({})", agent.getName(), agent.getIp());
+        log.debug("Metrics saved for agent: {}", agent.getName());
 
         return MetricsDto.from(savedMetrics);
     }
@@ -125,7 +152,7 @@ public class MetricsServiceImpl implements MetricsService {
         Agent agent = agentRepository.findById(agentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Agent", "id", agentId));
 
-        return RealtimeMetrics.offline(agent.getId(), agent.getName(), agent.getIp());
+        return RealtimeMetrics.offline(agent.getId(), agent.getName(), agent.getHostname());
     }
 
     @Override
@@ -148,10 +175,10 @@ public class MetricsServiceImpl implements MetricsService {
                     allMetrics.add(metrics);
                 } catch (JsonProcessingException e) {
                     log.error("Failed to deserialize metrics from Redis for agent: {}", agent.getId(), e);
-                    allMetrics.add(RealtimeMetrics.offline(agent.getId(), agent.getName(), agent.getIp()));
+                    allMetrics.add(RealtimeMetrics.offline(agent.getId(), agent.getName(), agent.getHostname()));
                 }
             } else {
-                allMetrics.add(RealtimeMetrics.offline(agent.getId(), agent.getName(), agent.getIp()));
+                allMetrics.add(RealtimeMetrics.offline(agent.getId(), agent.getName(), agent.getHostname()));
             }
         }
 

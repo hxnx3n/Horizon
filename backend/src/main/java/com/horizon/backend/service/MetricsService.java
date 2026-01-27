@@ -11,8 +11,6 @@ public interface MetricsService {
 
     MetricsDto saveMetrics(Long agentId, MetricsRequest request);
 
-    MetricsDto saveMetricsByIp(String agentIp, MetricsRequest request);
-
     RealtimeMetrics getRealtimeMetrics(Long agentId);
 
     List<RealtimeMetrics> getAllRealtimeMetrics();

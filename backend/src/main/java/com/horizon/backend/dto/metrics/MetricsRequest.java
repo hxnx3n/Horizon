@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Getter
 @Builder
 @NoArgsConstructor
@@ -39,6 +41,10 @@ public class MetricsRequest {
     @PositiveOrZero(message = "Network TX bytes must be zero or positive")
     private Long networkTxBytes;
 
+    private Double networkRxRate;
+
+    private Double networkTxRate;
+
     @PositiveOrZero(message = "Load average must be zero or positive")
     private Double loadAverage1m;
 
@@ -53,4 +59,41 @@ public class MetricsRequest {
 
     @PositiveOrZero(message = "Uptime must be zero or positive")
     private Long uptimeSeconds;
+
+    private Double temperature;
+
+    private String nodeId;
+
+    private String os;
+
+    private String platform;
+
+    private List<DiskInfo> disks;
+
+    private List<NetworkInterfaceInfo> interfaces;
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DiskInfo {
+        private String device;
+        private String mountpoint;
+        private Long totalBytes;
+        private Long usedBytes;
+        private Double usage;
+    }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class NetworkInterfaceInfo {
+        private String name;
+        private List<String> ips;
+        private Long sentBytes;
+        private Long recvBytes;
+        private Double sentRate;
+        private Double recvRate;
+    }
 }

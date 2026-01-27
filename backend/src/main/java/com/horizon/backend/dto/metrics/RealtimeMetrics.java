@@ -8,6 +8,7 @@ import lombok.Setter;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -18,7 +19,7 @@ public class RealtimeMetrics implements Serializable {
 
     private Long agentId;
     private String agentName;
-    private String agentIp;
+    private String hostname;
     private boolean online;
 
     private Double cpuUsage;
@@ -30,22 +31,59 @@ public class RealtimeMetrics implements Serializable {
     private Double diskUsage;
     private Long networkRxBytes;
     private Long networkTxBytes;
+    private Double networkRxRate;
+    private Double networkTxRate;
     private Double loadAverage1m;
     private Double loadAverage5m;
     private Double loadAverage15m;
     private Integer processCount;
     private Long uptimeSeconds;
+    private Double temperature;
+
+    private String nodeId;
+    private String os;
+    private String platform;
+
+    private List<DiskInfo> disks;
+    private List<NetworkInterfaceInfo> interfaces;
 
     private LocalDateTime timestamp;
     private LocalDateTime lastHeartbeat;
 
-    public static RealtimeMetrics offline(Long agentId, String agentName, String agentIp) {
+    public static RealtimeMetrics offline(Long agentId, String agentName, String hostname) {
         return RealtimeMetrics.builder()
                 .agentId(agentId)
                 .agentName(agentName)
-                .agentIp(agentIp)
+                .hostname(hostname)
                 .online(false)
                 .timestamp(LocalDateTime.now())
                 .build();
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DiskInfo implements Serializable {
+        private String device;
+        private String mountpoint;
+        private Long totalBytes;
+        private Long usedBytes;
+        private Double usage;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class NetworkInterfaceInfo implements Serializable {
+        private String name;
+        private List<String> ips;
+        private Long sentBytes;
+        private Long recvBytes;
+        private Double sentRate;
+        private Double recvRate;
     }
 }
