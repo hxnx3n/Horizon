@@ -176,7 +176,6 @@ func (c *PushClient) StartPushing() {
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
 
-	// Push immediately on start
 	if err := c.PushMetrics(); err != nil {
 		fmt.Printf("Failed to push metrics: %v\n", err)
 	}
@@ -197,11 +196,9 @@ func (c *PushClient) Stop() {
 	close(c.stopCh)
 }
 
-// ValidateKey validates the key with the server
 func ValidateKey(serverURL, key string) error {
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	// Try to get node info to validate key
 	reqBody := RegisterRequest{
 		Key:      key,
 		NodeID:   "validation-test",
@@ -241,7 +238,6 @@ func ValidateKey(serverURL, key string) error {
 	return nil
 }
 
-// StoreAuthConfig stores the authentication configuration
 func StoreAuthConfig(serverURL, key string) error {
 	authConfig := &config.AuthConfig{
 		Key:        key,
