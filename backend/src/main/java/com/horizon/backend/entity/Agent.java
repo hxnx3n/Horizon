@@ -20,23 +20,33 @@ public class Agent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "client_key_id")
+    private Long clientKeyId;
+
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 45)
-    private String ip;
+    @Column(name = "node_id", length = 100)
+    private String nodeId;
 
-    @Column(nullable = false)
-    @Builder.Default
-    private Integer port = 9090;
+    @Column(length = 100)
+    private String hostname;
 
-    @Column(name = "polling_interval", nullable = false)
-    @Builder.Default
-    private Long pollingInterval = 1000L;
+    @Column(length = 50)
+    private String os;
+
+    @Column(length = 100)
+    private String platform;
 
     @Column(nullable = false)
     @Builder.Default
     private boolean enabled = true;
+
+    @Column(name = "last_seen_at")
+    private LocalDateTime lastSeenAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -45,4 +55,13 @@ public class Agent {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_key_id", insertable = false, updatable = false)
+    private ClientKey clientKey;
 }
+

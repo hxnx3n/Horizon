@@ -15,24 +15,33 @@ import java.time.LocalDateTime;
 public class AgentDto {
 
     private Long id;
+    private Long userId;
+    private Long clientKeyId;
     private String name;
-    private String ip;
-    private Integer port;
-    private Long pollingInterval;
+    private String nodeId;
+    private String hostname;
+    private String os;
+    private String platform;
     private boolean enabled;
+    private LocalDateTime lastSeenAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public static AgentDto from(Agent agent) {
         return AgentDto.builder()
                 .id(agent.getId())
+                .userId(agent.getUserId())
+                .clientKeyId(agent.getClientKeyId())
                 .name(agent.getName())
-                .ip(agent.getIp())
-                .port(agent.getPort())
-                .pollingInterval(agent.getPollingInterval())
+                .nodeId(agent.getNodeId())
+                .hostname(agent.getHostname())
+                .os(agent.getOs())
+                .platform(agent.getPlatform())
                 .enabled(agent.isEnabled())
+                .lastSeenAt(agent.getLastSeenAt())
                 .createdAt(agent.getCreatedAt())
                 .updatedAt(agent.getUpdatedAt())
                 .build();
     }
 }
+
