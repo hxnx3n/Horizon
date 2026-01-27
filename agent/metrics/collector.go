@@ -152,9 +152,11 @@ func (c *Collector) updateCache() *Metrics {
 	var memUsage float64
 	var memTotal, memUsed uint64
 	if vMem, err := mem.VirtualMemory(); err == nil {
-		memUsage = round(vMem.UsedPercent, 1)
 		memTotal = vMem.Total
-		memUsed = vMem.Used
+		memUsed = vMem.Total - vMem.Available
+		if memTotal > 0 {
+			memUsage = round(float64(memUsed)/float64(memTotal)*100.0, 1)
+		}
 	}
 
 	m := &Metrics{

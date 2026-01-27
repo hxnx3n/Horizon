@@ -22,6 +22,7 @@ Commands:
   stop                             Stop the running agent
   status                           Show agent and service status
   deauth                           Remove authentication and unregister
+  update                           Update to the latest version
   version                          Show version information
 
 Service Commands (Linux, requires sudo):
