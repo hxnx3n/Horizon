@@ -85,18 +85,45 @@ func RunUninstall() error {
 		return fmt.Errorf("this command requires root privileges. Run with sudo")
 	}
 
+	// Check if service exists
+	if _, err := os.Stat(serviceFilePath); os.IsNotExist(err) {
+		fmt.Println("Service is not installed.")
+		return nil
+	}
+
+	// Confirmation prompt
+	fmt.Println("This will:")
+	fmt.Println("  - Stop the Horizon Agent service")
+	fmt.Println("  - Remove the systemd service configuration")
+	fmt.Println()
+	fmt.Print("Are you sure you want to uninstall? (y/N): ")
+
+	var response string
+	fmt.Scanln(&response)
+	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+		fmt.Println("Uninstall cancelled.")
+		return nil
+	}
+
+	// Stop and disable service
 	runCommand("systemctl", "stop", serviceName)
 	runCommand("systemctl", "disable", serviceName)
 
+	// Remove service file
 	if err := os.Remove(serviceFilePath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove service file: %w", err)
 	}
 
+	// Reload systemd
 	if err := runCommand("systemctl", "daemon-reload"); err != nil {
 		return fmt.Errorf("failed to reload systemd: %w", err)
 	}
 
+	fmt.Println()
 	fmt.Println("✓ Horizon Agent service uninstalled successfully!")
+	fmt.Println()
+	fmt.Println("Note: Authentication config is preserved.")
+	fmt.Println("  To remove authentication, run: horizon-agent deauth")
 
 	return nil
 }
