@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,37 +11,106 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hxnx3n/Horizon/agent/cmd"
 	"github.com/hxnx3n/Horizon/agent/config"
 	"github.com/hxnx3n/Horizon/agent/metrics"
-	"github.com/hxnx3n/Horizon/agent/server"
+	"github.com/hxnx3n/Horizon/agent/push"
 )
 
 func main() {
-	cfg := config.Load()
+	if len(os.Args) < 2 {
+		runPushMode()
+		return
+	}
 
+	command := os.Args[1]
+
+	switch command {
+	case "auth":
+		if err := cmd.RunAuth(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "deauth":
+		if err := cmd.RunDeauth(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "status":
+		if err := cmd.RunStatus(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "run":
+		runPushMode()
+
+	case "help", "-h", "--help":
+		cmd.PrintUsage()
+
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
+		cmd.PrintUsage()
+		os.Exit(1)
+	}
+}
+
+func runPushMode() {
+	authConfig, err := cmd.GetAuthConfig()
+	if err != nil {
+		log.Fatalf("Failed to load auth config: %v", err)
+	}
+
+	if authConfig == nil {
+		fmt.Println("Agent is not authenticated.")
+		fmt.Println("Run 'horizon-agent auth <key>' to authenticate first.")
+		fmt.Println("Or set HORIZON_KEY environment variable.")
+		os.Exit(1)
+	}
+
+	cfg := config.Load()
 	collector := metrics.NewCollector(cfg.NodeID, cfg.CacheInterval)
-	handler := server.NewHandler(collector)
+
+	pushClient := push.NewPushClient(
+		authConfig.ServerURL,
+		authConfig.Key,
+		collector,
+		cfg.CacheInterval,
+	)
+
+	log.Printf("Registering with server %s...", authConfig.ServerURL)
+	if err := pushClient.Register(); err != nil {
+		log.Fatalf("Failed to register with server: %v", err)
+	}
+	log.Printf("Registered successfully!")
+
+	go func() {
+		log.Printf("Starting metrics push (interval: %s)", cfg.CacheInterval)
+		pushClient.StartPushing()
+	}()
+
 	mux := http.NewServeMux()
-	handler.RegisterRoutes(mux)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		data := collector.GetMetrics()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(data)
+	})
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
 		Handler: mux,
 	}
 
-	var pusher *metrics.Pusher
-	if cfg.PushEnabled && cfg.BackendURL != "" {
-		pusher = metrics.NewPusher(collector, cfg.BackendURL, cfg.PushInterval)
-		pusher.Start()
-	}
-
 	go func() {
-		log.Printf("Agent started on port %d", cfg.Port)
-		if cfg.PushEnabled && cfg.BackendURL != "" {
-			log.Printf("Push mode enabled: %s (interval: %v)", cfg.BackendURL, cfg.PushInterval)
-		}
+		log.Printf("Health check server started on port %d", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Listen error: %v", err)
+			log.Printf("Health server error: %v", err)
 		}
 	}()
 
@@ -48,12 +118,12 @@ func main() {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
-	if pusher != nil {
-		pusher.Stop()
-	}
+	log.Println("Shutting down...")
+	pushClient.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	srv.Shutdown(ctx)
+
 	log.Println("Agent stopped")
 }
