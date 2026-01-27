@@ -17,11 +17,16 @@ Usage:
 Commands:
   auth <key> <server-url>    Register this agent with the given authentication key
 
-  run                        Start pushing metrics to the server
+  run [-d]                   Start pushing metrics to the server
+                             -d: Run as daemon (background mode)
 
   status                     Show current authentication status
 
   deauth                     Remove authentication configuration
+
+  install                    Install as systemd service (Linux, requires sudo)
+
+  uninstall                  Remove systemd service (Linux, requires sudo)
 
   update                     Update to the latest version
 
@@ -30,6 +35,8 @@ Commands:
 Examples:
   horizon-agent auth hzn_abc123def456 http://myserver:8080
   horizon-agent run
+  horizon-agent run -d
+  sudo horizon-agent install
   horizon-agent status
   horizon-agent update`, Version)
 	fmt.Println()

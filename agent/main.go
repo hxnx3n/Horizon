@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
@@ -45,10 +46,27 @@ func main() {
 		}
 
 	case "run":
-		runPushMode()
+		daemonMode := len(os.Args) > 2 && (os.Args[2] == "-d" || os.Args[2] == "--daemon")
+		if daemonMode {
+			runAsDaemon()
+		} else {
+			runPushMode()
+		}
 
 	case "update":
 		if err := cmd.RunUpdate(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "install":
+		if err := cmd.RunInstall(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "uninstall":
+		if err := cmd.RunUninstall(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -139,4 +157,30 @@ func runPushMode() {
 	srv.Shutdown(ctx)
 
 	log.Println("Agent stopped")
+}
+
+func runAsDaemon() {
+	if os.Getenv("HORIZON_DAEMON") == "1" {
+		runPushMode()
+		return
+	}
+
+	executable, err := os.Executable()
+	if err != nil {
+		log.Fatalf("Failed to get executable path: %v", err)
+	}
+
+	cmd := exec.Command(executable, "run")
+	cmd.Env = append(os.Environ(), "HORIZON_DAEMON=1")
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	cmd.Stdin = nil
+
+	if err := cmd.Start(); err != nil {
+		log.Fatalf("Failed to start daemon: %v", err)
+	}
+
+	fmt.Printf("✓ Agent started in background (PID: %d)\n", cmd.Process.Pid)
+	fmt.Println("  Use 'horizon-agent status' to check status")
+	fmt.Println("  Use 'pkill horizon-agent' to stop")
 }
