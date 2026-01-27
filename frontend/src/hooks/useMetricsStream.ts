@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { RealtimeMetrics } from '../types/agent';
 
 const API_BASE_URL = '/api';
-const UI_UPDATE_INTERVAL_MS = 2000;
+const UI_UPDATE_INTERVAL_MS = 1000;
 
 interface UseMetricsStreamOptions {
   agentId?: number;
@@ -24,7 +24,7 @@ export function useMetricsStream(options: UseMetricsStreamOptions = {}): UseMetr
 
   const [metrics, setMetrics] = useState<Map<number, RealtimeMetrics>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);ㅋ
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
