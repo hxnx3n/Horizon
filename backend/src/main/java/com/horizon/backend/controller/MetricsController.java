@@ -6,7 +6,6 @@ import com.horizon.backend.dto.metrics.MetricsRequest;
 import com.horizon.backend.dto.metrics.RealtimeMetrics;
 import com.horizon.backend.service.MetricsService;
 import com.horizon.backend.service.SseEmitterService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,19 +34,6 @@ public class MetricsController {
         MetricsDto metrics = metricsService.saveMetrics(agentId, request);
 
         RealtimeMetrics realtime = metricsService.getRealtimeMetrics(agentId);
-        sseEmitterService.sendToAll(realtime);
-
-        return ResponseEntity.ok(ApiResponse.success(metrics, "Metrics received successfully"));
-    }
-
-    @PostMapping("/report")
-    public ResponseEntity<ApiResponse<MetricsDto>> reportMetrics(
-            @Valid @RequestBody MetricsRequest request,
-            HttpServletRequest httpRequest) {
-        String agentIp = getClientIp(httpRequest);
-        MetricsDto metrics = metricsService.saveMetricsByIp(agentIp, request);
-
-        RealtimeMetrics realtime = metricsService.getRealtimeMetrics(metrics.getAgentId());
         sseEmitterService.sendToAll(realtime);
 
         return ResponseEntity.ok(ApiResponse.success(metrics, "Metrics received successfully"));
@@ -114,13 +100,5 @@ public class MetricsController {
         }
 
         return emitter;
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }
