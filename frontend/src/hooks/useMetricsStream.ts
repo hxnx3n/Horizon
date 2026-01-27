@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { RealtimeMetrics } from '../types/agent';
 
 const API_BASE_URL = '/api';
-const UI_UPDATE_INTERVAL_MS = 10000;
+const UI_UPDATE_INTERVAL_MS = 5000;
 
 interface UseMetricsStreamOptions {
   agentId?: number;

@@ -57,7 +57,7 @@ func NewCollector(nodeID string, interval time.Duration) *Collector {
 }
 
 func (c *Collector) startBackgroundCollection() {
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := time.NewTicker(1000 * time.Millisecond)
 	defer ticker.Stop()
 
 	for range ticker.C {
