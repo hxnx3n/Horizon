@@ -46,7 +46,7 @@ func Load() *Config {
 
 	backendURL := os.Getenv("BACKEND_URL")
 
-	pushInterval := 250 * time.Millisecond
+	pushInterval := 1 * time.Second
 	if intervalStr := os.Getenv("PUSH_INTERVAL"); intervalStr != "" {
 		if d, err := time.ParseDuration(intervalStr); err == nil {
 			pushInterval = d
