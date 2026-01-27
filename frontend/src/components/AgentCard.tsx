@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import MetricsChart, { MultiLineChart } from './MetricsChart';
 import type { RealtimeMetrics, MetricsHistoryPoint, DiskInfo, NetworkInterface } from '../types/agent';
 import type { Agent } from '../types/agent';
@@ -116,12 +116,33 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
   const [activeTab, setActiveTab] = useState<'overview' | 'disks' | 'network'>('overview');
   const isOnline = metrics?.online ?? false;
 
+  const prevInterfacesRef = useRef<Map<string, NetworkInterface>>(new Map());
+
+  useEffect(() => {
+    if (metrics?.interfaces) {
+      metrics.interfaces.forEach((iface) => {
+        if (iface.recvRate !== null && iface.recvRate !== undefined) {
+          prevInterfacesRef.current.set(iface.name, iface);
+        }
+      });
+    }
+  }, [metrics?.interfaces]);
+
+  const getInterfaceWithFallback = (iface: NetworkInterface): NetworkInterface => {
+    const prev = prevInterfacesRef.current.get(iface.name);
+    return {
+      ...iface,
+      recvRate: iface.recvRate ?? prev?.recvRate ?? 0,
+      sentRate: iface.sentRate ?? prev?.sentRate ?? 0,
+    };
+  };
+
   const totalNetworkRx = metrics?.interfaces?.reduce((sum, i) => sum + (i.recvRate || 0), 0) ?? 0;
   const totalNetworkTx = metrics?.interfaces?.reduce((sum, i) => sum + (i.sentRate || 0), 0) ?? 0;
 
   const filteredInterfaces = metrics?.interfaces?.filter(
     (i) => i.name !== 'lo' && !i.name.startsWith('lo')
-  ) ?? [];
+  ).map(getInterfaceWithFallback) ?? [];
 
   const totalDiskUsed = metrics?.disks?.reduce((sum, d) => sum + d.usedBytes, 0) ?? 0;
   const totalDiskTotal = metrics?.disks?.reduce((sum, d) => sum + d.totalBytes, 0) ?? 0;
