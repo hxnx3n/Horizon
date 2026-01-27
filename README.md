@@ -24,7 +24,7 @@ Horizon is a modern infrastructure monitoring solution that provides real-time v
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Horizon Agent │───▶ │  Backend (API)  │◀───│    Frontend     │
+│   Horizon Agent │────▶│  Backend (API)  │◀────│    Frontend     │
 │   (Go binary)   │push │  Spring Boot    │ SSE │  React + Vite   │
 └─────────────────┘     └────────┬────────┘     └─────────────────┘
                                  │
