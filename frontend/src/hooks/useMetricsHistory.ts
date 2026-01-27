@@ -68,13 +68,15 @@ export function useMetricsHistory(options: UseMetricsHistoryOptions = {}): UseMe
   const addMetrics = useCallback((metrics: RealtimeMetrics) => {
     if (!metrics.online) return;
 
+    const prevPoint = latestMetricsRef.current.get(metrics.agentId);
+
     const point: MetricsHistoryPoint = {
       timestamp: Date.now(),
       cpuUsage: metrics.cpuUsage,
       memoryUsage: metrics.memoryUsage,
       diskUsage: metrics.diskUsage,
-      networkRxRate: metrics.networkRxRate,
-      networkTxRate: metrics.networkTxRate,
+      networkRxRate: metrics.networkRxRate ?? prevPoint?.networkRxRate ?? null,
+      networkTxRate: metrics.networkTxRate ?? prevPoint?.networkTxRate ?? null,
       temperature: metrics.temperature,
     };
 
