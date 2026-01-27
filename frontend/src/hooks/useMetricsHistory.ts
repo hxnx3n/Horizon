@@ -72,12 +72,12 @@ export function useMetricsHistory(options: UseMetricsHistoryOptions = {}): UseMe
 
     const point: MetricsHistoryPoint = {
       timestamp: Date.now(),
-      cpuUsage: metrics.cpuUsage,
-      memoryUsage: metrics.memoryUsage,
-      diskUsage: metrics.diskUsage,
+      cpuUsage: metrics.cpuUsage ?? prevPoint?.cpuUsage ?? null,
+      memoryUsage: metrics.memoryUsage ?? prevPoint?.memoryUsage ?? null,
+      diskUsage: metrics.diskUsage ?? prevPoint?.diskUsage ?? null,
       networkRxRate: metrics.networkRxRate ?? prevPoint?.networkRxRate ?? null,
       networkTxRate: metrics.networkTxRate ?? prevPoint?.networkTxRate ?? null,
-      temperature: metrics.temperature,
+      temperature: metrics.temperature ?? prevPoint?.temperature ?? null,
     };
 
     latestMetricsRef.current.set(metrics.agentId, point);
