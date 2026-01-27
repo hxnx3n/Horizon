@@ -47,6 +47,15 @@ func main() {
 	case "run":
 		runPushMode()
 
+	case "update":
+		if err := cmd.RunUpdate(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "version", "-v", "--version":
+		cmd.RunVersion()
+
 	case "help", "-h", "--help":
 		cmd.PrintUsage()
 

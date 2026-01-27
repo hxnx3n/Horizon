@@ -9,7 +9,7 @@ import (
 )
 
 func PrintUsage() {
-	fmt.Println(`Horizon Agent - System Metrics Collector
+	fmt.Printf(`Horizon Agent - System Metrics Collector (version %s)
 
 Usage:
   horizon-agent [command] [options]
@@ -23,11 +23,16 @@ Commands:
 
   deauth                     Remove authentication configuration
 
+  update                     Update to the latest version
+
+  version                    Show version information
+
 Examples:
   horizon-agent auth hzn_abc123def456 http://myserver:8080
   horizon-agent run
   horizon-agent status
-  horizon-agent deauth`)
+  horizon-agent update`, Version)
+	fmt.Println()
 }
 
 func RunAuth(args []string) error {

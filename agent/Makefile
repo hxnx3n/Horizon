@@ -5,7 +5,8 @@
 # ========================
 BINARY_NAME := horizon-agent
 GO          := go
-GOFLAGS     := -ldflags="-s -w"
+VERSION     ?= dev
+GOFLAGS     := -ldflags="-s -w -X github.com/hxnx3n/Horizon/agent/cmd.Version=$(VERSION)"
 
 # ========================
 # OS detection
