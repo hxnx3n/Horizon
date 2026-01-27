@@ -1,6 +1,5 @@
 package com.horizon.backend.service;
 
-import com.horizon.backend.dto.agent.AgentMetricsPayload;
 import com.horizon.backend.dto.agent.AgentPushRequest;
 import com.horizon.backend.dto.agent.AgentRegisterRequest;
 import com.horizon.backend.dto.agent.AgentRegisterResponse;
