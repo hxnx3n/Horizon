@@ -85,13 +85,11 @@ func RunUninstall() error {
 		return fmt.Errorf("this command requires root privileges. Run with sudo")
 	}
 
-	// Check if service exists
 	if _, err := os.Stat(serviceFilePath); os.IsNotExist(err) {
 		fmt.Println("Service is not installed.")
 		return nil
 	}
 
-	// Confirmation prompt
 	fmt.Println("This will:")
 	fmt.Println("  - Stop the Horizon Agent service")
 	fmt.Println("  - Remove the systemd service configuration")
@@ -105,16 +103,13 @@ func RunUninstall() error {
 		return nil
 	}
 
-	// Stop and disable service
 	runCommand("systemctl", "stop", serviceName)
 	runCommand("systemctl", "disable", serviceName)
 
-	// Remove service file
 	if err := os.Remove(serviceFilePath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove service file: %w", err)
 	}
 
-	// Reload systemd
 	if err := runCommand("systemctl", "daemon-reload"); err != nil {
 		return fmt.Errorf("failed to reload systemd: %w", err)
 	}
