@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { RealtimeMetrics } from '../types/agent';
 
 const API_BASE_URL = '/api';
+const UI_UPDATE_INTERVAL_MS = 2000;
 
 interface UseMetricsStreamOptions {
   agentId?: number;
@@ -30,6 +31,9 @@ export function useMetricsStream(options: UseMetricsStreamOptions = {}): UseMetr
   const reconnectAttemptsRef = useRef(0);
   const connectRef = useRef<() => void>(() => { });
   const isConnectingRef = useRef(false);
+
+  const pendingMetricsRef = useRef<Map<number, RealtimeMetrics>>(new Map());
+  const uiUpdateIntervalRef = useRef<number | null>(null);
 
   const optionsRef = useRef(options);
 
@@ -144,26 +148,24 @@ export function useMetricsStream(options: UseMetricsStreamOptions = {}): UseMetr
               newMetrics.set(m.agentId, m);
             });
             setMetrics(newMetrics);
+            data.forEach((m: RealtimeMetrics) => {
+              pendingMetricsRef.current.set(m.agentId, m);
+            });
             optionsRef.current.onMetrics?.(data);
           } else {
             setMetrics(new Map([[data.agentId, data]]));
+            pendingMetricsRef.current.set(data.agentId, data);
             optionsRef.current.onMetrics?.(data);
           }
         } else if (eventType === 'metrics') {
           const metricsData: RealtimeMetrics = data;
-          setMetrics((prev) => {
-            const newMetrics = new Map(prev);
-            newMetrics.set(metricsData.agentId, metricsData);
-            return newMetrics;
-          });
+          pendingMetricsRef.current.set(metricsData.agentId, metricsData);
           optionsRef.current.onMetrics?.(metricsData);
         } else if (eventType === 'metrics-all') {
           const metricsArray: RealtimeMetrics[] = data;
-          const newMetrics = new Map<number, RealtimeMetrics>();
           metricsArray.forEach((m) => {
-            newMetrics.set(m.agentId, m);
+            pendingMetricsRef.current.set(m.agentId, m);
           });
-          setMetrics(newMetrics);
           optionsRef.current.onMetrics?.(metricsArray);
         }
       } catch {
@@ -191,6 +193,12 @@ export function useMetricsStream(options: UseMetricsStreamOptions = {}): UseMetr
     connectRef.current = connect;
     connect();
 
+    uiUpdateIntervalRef.current = window.setInterval(() => {
+      if (pendingMetricsRef.current.size > 0) {
+        setMetrics(new Map(pendingMetricsRef.current));
+      }
+    }, UI_UPDATE_INTERVAL_MS);
+
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -199,6 +207,10 @@ export function useMetricsStream(options: UseMetricsStreamOptions = {}): UseMetr
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
+      }
+      if (uiUpdateIntervalRef.current) {
+        clearInterval(uiUpdateIntervalRef.current);
+        uiUpdateIntervalRef.current = null;
       }
       isConnectingRef.current = false;
     };
