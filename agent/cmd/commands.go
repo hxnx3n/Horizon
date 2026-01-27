@@ -2,14 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/hxnx3n/Horizon/agent/config"
 	"github.com/hxnx3n/Horizon/agent/push"
 )
-
-const defaultServerURL = "http://localhost:8080"
 
 func PrintUsage() {
 	fmt.Println(`Horizon Agent - System Metrics Collector
@@ -18,8 +15,7 @@ Usage:
   horizon-agent [command] [options]
 
 Commands:
-  auth <key> [server-url]    Register this agent with the given authentication key
-                             Optional: specify server URL (default: http://localhost:8080)
+  auth <key> <server-url>    Register this agent with the given authentication key
 
   run                        Start pushing metrics to the server
 
@@ -31,33 +27,16 @@ Examples:
   horizon-agent auth hzn_abc123def456 http://myserver:8080
   horizon-agent run
   horizon-agent status
-  horizon-agent deauth
-
-Environment Variables:
-  HORIZON_SERVER_URL   Backend server URL (required)
-  HORIZON_KEY          Agent authentication key (required, or use 'auth' command)
-  NODE_ID              Custom node identifier (default: hostname)
-  AGENT_PORT           Local health check port (default: 9090)
-  CACHE_INTERVAL       Metrics collection interval (default: 1s)`)
+  horizon-agent deauth`)
 }
 
 func RunAuth(args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("missing authentication key\nUsage: horizon-agent auth <key> [server-url]")
+	if len(args) < 2 {
+		return fmt.Errorf("missing arguments\nUsage: horizon-agent auth <key> <server-url>")
 	}
 
 	key := args[0]
-	serverURL := defaultServerURL
-
-	if len(args) > 1 {
-		serverURL = args[1]
-	}
-
-	if envURL := os.Getenv("HORIZON_SERVER_URL"); envURL != "" {
-		serverURL = envURL
-	}
-
-	serverURL = strings.TrimSuffix(serverURL, "/")
+	serverURL := strings.TrimSuffix(args[1], "/")
 
 	fmt.Printf("Validating key with server %s...\n", serverURL)
 
@@ -105,7 +84,7 @@ func RunStatus() error {
 
 	if authConfig == nil || !authConfig.Registered {
 		fmt.Println("Status: Not authenticated")
-		fmt.Println("\nRun 'horizon-agent auth <key>' to authenticate.")
+		fmt.Println("\nRun 'horizon-agent auth <key> <server-url>' to authenticate.")
 		return nil
 	}
 
@@ -120,21 +99,6 @@ func RunStatus() error {
 }
 
 func GetAuthConfig() (*config.AuthConfig, error) {
-	envKey := os.Getenv("HORIZON_KEY")
-	envServer := os.Getenv("HORIZON_SERVER_URL")
-
-	if envKey != "" {
-		serverURL := defaultServerURL
-		if envServer != "" {
-			serverURL = envServer
-		}
-		return &config.AuthConfig{
-			Key:        envKey,
-			ServerURL:  serverURL,
-			Registered: true,
-		}, nil
-	}
-
 	authConfig, err := config.LoadAuthConfig()
 	if err != nil {
 		return nil, err
@@ -142,10 +106,6 @@ func GetAuthConfig() (*config.AuthConfig, error) {
 
 	if authConfig == nil || !authConfig.Registered {
 		return nil, nil
-	}
-
-	if envServer != "" {
-		authConfig.ServerURL = envServer
 	}
 
 	return authConfig, nil
