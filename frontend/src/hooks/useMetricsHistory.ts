@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import type { RealtimeMetrics, MetricsHistoryPoint, AgentMetricsHistory } from '../types/agent';
 
 const DEFAULT_MAX_POINTS = 60;
-const UPDATE_INTERVAL_MS = 3000;
+const UPDATE_INTERVAL_MS = 5000;
 
 interface UseMetricsHistoryOptions {
   maxPoints?: number;
