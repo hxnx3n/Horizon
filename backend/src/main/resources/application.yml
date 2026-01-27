@@ -58,5 +58,5 @@ metrics:
 agent:
   port: 9090
   polling:
-    interval: 1000
+    interval: 250
     timeout: 3000
