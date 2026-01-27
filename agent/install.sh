@@ -6,7 +6,6 @@ BINARY_NAME="horizon-agent"
 INSTALL_DIR="/usr/local/bin"
 GITHUB_REPO="hxnx3n/Horizon"
 
-# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -25,7 +24,6 @@ echo -e "${NC}"
 echo "Horizon Agent Installer"
 echo ""
 
-# Check for required commands
 for cmd in curl; do
     if ! command -v $cmd &> /dev/null; then
         echo -e "${RED}Error: $cmd is required but not installed.${NC}"
@@ -39,7 +37,6 @@ else
     SUDO=""
 fi
 
-# Detect OS
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 case $OS in
     linux)
@@ -57,7 +54,6 @@ case $OS in
         ;;
 esac
 
-# Detect Architecture
 ARCH=$(uname -m)
 case $ARCH in
     x86_64|amd64)
