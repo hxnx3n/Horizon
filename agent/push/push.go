@@ -17,6 +17,7 @@ type PushClient struct {
 	httpClient *http.Client
 	collector  *metrics.Collector
 	interval   time.Duration
+	port       int
 	stopCh     chan struct{}
 }
 
@@ -26,6 +27,7 @@ type RegisterRequest struct {
 	Hostname string `json:"hostname"`
 	OS       string `json:"os"`
 	Platform string `json:"platform"`
+	Port     int    `json:"port"`
 }
 
 type RegisterResponse struct {
@@ -64,7 +66,7 @@ type MetricsPayload struct {
 	Timestamp    string                     `json:"timestamp"`
 }
 
-func NewPushClient(serverURL, key string, collector *metrics.Collector, interval time.Duration) *PushClient {
+func NewPushClient(serverURL, key string, collector *metrics.Collector, interval time.Duration, port int) *PushClient {
 	return &PushClient{
 		serverURL: serverURL,
 		key:       key,
@@ -73,6 +75,7 @@ func NewPushClient(serverURL, key string, collector *metrics.Collector, interval
 		},
 		collector: collector,
 		interval:  interval,
+		port:      port,
 		stopCh:    make(chan struct{}),
 	}
 }
@@ -86,6 +89,7 @@ func (c *PushClient) Register() error {
 		Hostname: m.NodeID,
 		OS:       m.OS,
 		Platform: m.Platform,
+		Port:     c.port,
 	}
 
 	jsonData, err := json.Marshal(reqBody)

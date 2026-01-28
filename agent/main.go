@@ -121,6 +121,7 @@ func runPushMode() {
 		authConfig.Key,
 		collector,
 		cfg.CacheInterval,
+		cfg.Port,
 	)
 
 	log.Printf("Registering with server %s...", authConfig.ServerURL)
@@ -143,6 +144,40 @@ func runPushMode() {
 		data := collector.GetMetrics()
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(data)
+	})
+	mux.HandleFunc("/command", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req struct {
+			Command string `json:"command"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"output":   "",
+				"error":    err.Error(),
+				"exitCode": 1,
+			})
+			return
+		}
+
+		output, err := executeCommand(req.Command)
+		exitCode := 0
+		errMsg := ""
+		if err != nil {
+			exitCode = 1
+			errMsg = err.Error()
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"output":   output,
+			"error":    errMsg,
+			"exitCode": exitCode,
+		})
 	})
 
 	srv := &http.Server{
@@ -195,4 +230,19 @@ func runAsDaemon() {
 	fmt.Printf("✓ Agent started in background (PID: %d)\n", cmd.Process.Pid)
 	fmt.Println("  Use 'horizon-agent status' to check status")
 	fmt.Println("  Use 'pkill horizon-agent' to stop")
+}
+
+func executeCommand(command string) (string, error) {
+	var cmd *exec.Cmd
+
+	if os.Getenv("HORIZON_OS") == "windows" || len(os.Args) > 0 {
+		// Windows
+		cmd = exec.Command("cmd.exe", "/c", command)
+	} else {
+		// Unix-like (Linux, macOS)
+		cmd = exec.Command("/bin/sh", "-c", command)
+	}
+
+	output, err := cmd.CombinedOutput()
+	return string(output), err
 }
