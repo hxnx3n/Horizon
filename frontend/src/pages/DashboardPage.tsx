@@ -156,8 +156,6 @@ export default function DashboardPage() {
   const closeKeyModal = () => {
     setIsKeyModalOpen(false);
     setCreatedKey(null);
-    setNewKeyName('');
-    setNewKeyDescription('');
     setNewKeyExpiresInDays(undefined);
     setCopied(false);
   };
@@ -460,7 +458,7 @@ export default function DashboardPage() {
                 <form onSubmit={handleCreateKey} className="space-y-4">
                   <div>
                     <label
-                      htmlFor="keyDescription"
+                      htmlFor="keyExpiry"
                       className="block text-sm font-medium text-slate-300 mb-2"
                     >
                       Expires In (days)
