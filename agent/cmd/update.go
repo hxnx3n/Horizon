@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var Version = "0.3.8"
+var Version = "0.3.9"
 
 const (
 	githubRepo    = "hxnx3n/Horizon"
@@ -160,8 +160,7 @@ func getReleaseByVersion(version string) (*GitHubRelease, error) {
 	normalizedVersion := strings.TrimPrefix(version, "v")
 
 	for _, release := range releases {
-		if strings.HasPrefix(release.TagName, releasePrefix) {
-			releaseVersion := strings.TrimPrefix(release.TagName, releasePrefix)
+		if releaseVersion, ok := strings.CutPrefix(release.TagName, releasePrefix); ok {
 			if releaseVersion == normalizedVersion {
 				return &release, nil
 			}
