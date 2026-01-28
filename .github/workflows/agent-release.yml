@@ -107,15 +107,15 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: agent-v${{ steps.version.outputs.version }}
-          name: Horizon Agent v${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          name: Horizon Agent ${{ steps.version.outputs.version }}
           draft: false
           prerelease: false
           generate_release_notes: true
           files: |
             dist/*
           body: |
-            ## Horizon Agent v${{ steps.version.outputs.version }}
+            ## Horizon Agent ${{ steps.version.outputs.version }}
 
             ### Installation
 
