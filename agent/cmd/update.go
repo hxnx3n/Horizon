@@ -95,9 +95,9 @@ func RunUpdate(targetVersion string) error {
 	}
 
 	fmt.Printf("\n✓ Successfully updated to version %s\n", latestVersion)
-	fmt.Println("  Please restart the agent if it's running.")
+	fmt.Println("  Restarting agent...")
 
-	return nil
+	return restartAgent(execPath)
 }
 
 func getLatestRelease() (*GitHubRelease, error) {
@@ -265,4 +265,40 @@ func copyFile(src, dst string) error {
 	}
 
 	return os.Chmod(dst, 0755)
+}
+
+func restartAgent(execPath string) error {
+	args := os.Args[1:]
+
+	runIndex := -1
+	for i, arg := range args {
+		if arg == "update" {
+			runIndex = i
+			break
+		}
+	}
+
+	newArgs := []string{}
+	if runIndex >= 0 {
+		newArgs = append(newArgs, args[:runIndex]...)
+		newArgs = append(newArgs, "run")
+		if runIndex+1 < len(args) {
+			newArgs = append(newArgs, args[runIndex+1:]...)
+		}
+	} else {
+		newArgs = []string{"run"}
+	}
+
+	cmd := exec.Command(execPath, newArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to restart agent: %w", err)
+	}
+
+	fmt.Printf("  Agent restarted with PID %d\n", cmd.Process.Pid)
+	os.Exit(0)
+	return nil
 }
