@@ -16,6 +16,7 @@ import (
 	"github.com/hxnx3n/Horizon/agent/config"
 	"github.com/hxnx3n/Horizon/agent/metrics"
 	"github.com/hxnx3n/Horizon/agent/push"
+	"github.com/hxnx3n/Horizon/agent/websocket"
 )
 
 func main() {
@@ -133,6 +134,12 @@ func runPushMode() {
 		log.Fatalf("Failed to register with server: %v", err)
 	}
 	log.Printf("Registered successfully!")
+
+	wsClient := websocket.NewClient(authConfig.ServerURL, fmt.Sprintf("%d", pushClient.AgentID))
+	if err := wsClient.Connect(); err != nil {
+		log.Fatalf("Failed to connect to WebSocket: %v", err)
+	}
+	defer wsClient.Close()
 
 	go func() {
 		log.Printf("Starting metrics push (interval: %s)", cfg.CacheInterval)

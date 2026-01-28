@@ -19,6 +19,7 @@ type PushClient struct {
 	interval   time.Duration
 	port       int
 	stopCh     chan struct{}
+	AgentID    string
 }
 
 type RegisterRequest struct {
@@ -122,6 +123,11 @@ func (c *PushClient) Register() error {
 			return fmt.Errorf("registration failed: %s", errResp.ErrorMessage)
 		}
 		return fmt.Errorf("registration failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var response RegisterResponse
+	if err := json.Unmarshal(body, &response); err == nil && response.Result != nil {
+		c.AgentID = response.Result.ID
 	}
 
 	return nil

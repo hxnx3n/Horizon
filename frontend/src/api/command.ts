@@ -13,8 +13,11 @@ export async function executeAgentCommand(
   command: string
 ): Promise<string> {
   try {
+    const url = `${API_BASE_URL}/api/agents/${agentId}/command`;
+    console.log('Executing command:', { url, command });
+    
     const response = await axios.post<CommandExecutionResponse>(
-      `${API_BASE_URL}/api/agents/${agentId}/command`,
+      url,
       { command },
       {
         headers: {
@@ -23,6 +26,7 @@ export async function executeAgentCommand(
       }
     );
 
+    console.log('Command response:', response.data);
     const { output, error, exitCode } = response.data;
     
     let result = '';
@@ -35,6 +39,7 @@ export async function executeAgentCommand(
 
     return result || 'Command executed successfully';
   } catch (error) {
+    console.error('Command execution error:', error);
     if (axios.isAxiosError(error)) {
       const message = (error.response?.data as { error?: string })?.error ||
         error.message ||
