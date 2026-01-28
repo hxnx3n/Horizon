@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var Version = "0.3.2"
+var Version = "0.3.3"
 
 const (
 	githubRepo    = "hxnx3n/Horizon"
@@ -35,6 +35,8 @@ func RunVersion() {
 
 func RunUpdate(targetVersion string) error {
 	fmt.Println("Checking for updates...")
+
+	killExistingAgents()
 
 	var release *GitHubRelease
 	var err error
@@ -265,4 +267,27 @@ func copyFile(src, dst string) error {
 	}
 
 	return os.Chmod(dst, 0755)
+}
+
+func killExistingAgents() {
+	myPid := os.Getpid()
+	fmt.Printf("Stopping existing horizon-agent processes (my PID: %d)...\n", myPid)
+
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("taskkill", "/F", "/IM", "horizon-agent.exe")
+	} else {
+		cmd = exec.Command("pkill", "-f", "horizon-agent")
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if runtime.GOOS != "windows" {
+			fmt.Println("  No running horizon-agent processes found (or already stopped)")
+		}
+	} else {
+		fmt.Printf("  Stopped existing processes: %s\n", strings.TrimSpace(string(output)))
+	}
+
+	time.Sleep(500 * time.Millisecond)
 }

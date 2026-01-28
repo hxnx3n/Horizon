@@ -7,10 +7,19 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hxnx3n/Horizon/agent/metrics"
 )
+
+// containsAuthError checks if the response body contains authentication-related error messages
+func containsAuthError(body string) bool {
+	lowerBody := strings.ToLower(body)
+	return strings.Contains(lowerBody, "invalid") && strings.Contains(lowerBody, "authentication") ||
+		strings.Contains(lowerBody, "expired") && strings.Contains(lowerBody, "key") ||
+		strings.Contains(lowerBody, "invalid or expired")
+}
 
 type PushClient struct {
 	serverURL    string
@@ -196,16 +205,17 @@ func (c *PushClient) PushMetrics() error {
 	}
 	defer resp.Body.Close()
 
-	// 인증 오류 감지 (401 Unauthorized, 403 Forbidden)
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
+
+	// 인증 오류 감지 (400 Bad Request with auth message, 401 Unauthorized, 403 Forbidden)
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden ||
+		(resp.StatusCode == http.StatusBadRequest && containsAuthError(string(body))) {
 		c.authInvalid = true
 		c.authErrorMsg = fmt.Sprintf("key invalid or expired (HTTP %d): %s", resp.StatusCode, string(body))
 		return fmt.Errorf("authentication failed: %s", c.authErrorMsg)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("push failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
