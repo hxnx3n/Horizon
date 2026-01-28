@@ -104,7 +104,7 @@ function NetworkCard({ iface }: { iface: NetworkInterface }) {
 
   return (
     <div className="bg-slate-700/30 rounded-lg p-3">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-medium text-slate-300">{iface.name}</span>
         {iface.ips && iface.ips.length > 0 && (
           <span className="text-[10px] text-slate-500 truncate max-w-[100px]" title={iface.ips[0]}>
@@ -112,15 +112,15 @@ function NetworkCard({ iface }: { iface: NetworkInterface }) {
           </span>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-[10px] text-slate-400">IN</p>
+          <p className="text-[10px] text-slate-400 mb-1">↓ IN</p>
           <p className="text-sm font-semibold text-emerald-400 tabular-nums">
             {formatBytesPerSec(iface.recvRate)}
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-slate-400">OUT</p>
+          <p className="text-[10px] text-slate-400 mb-1">↑ OUT</p>
           <p className="text-sm font-semibold text-orange-400 tabular-nums">
             {formatBytesPerSec(iface.sentRate)}
           </p>
@@ -221,7 +221,7 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
       {isOnline && metrics && !isCollapsed && (
         <>
           {/* Quick Stats Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 px-4 py-3 bg-slate-800/50 border-b border-slate-700/30">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 px-4 py-3 border-b border-slate-700/30">
             <MiniGauge
               value={metrics.cpuUsage ?? 0}
               label="CPU"
@@ -266,33 +266,33 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 px-4 pt-3 bg-slate-900/30">
+          <div className="flex gap-0 px-4 border-b border-slate-700/30">
             <button
               onClick={() => setActiveTab('charts')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-t-lg transition-colors ${
+              className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 ${
                 activeTab === 'charts'
-                  ? 'bg-slate-700/50 text-white border-t border-x border-slate-600/50'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'text-white border-blue-500'
+                  : 'text-slate-400 hover:text-white border-transparent'
               }`}
             >
               Charts
             </button>
             <button
               onClick={() => setActiveTab('disks')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-t-lg transition-colors ${
+              className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 ${
                 activeTab === 'disks'
-                  ? 'bg-slate-700/50 text-white border-t border-x border-slate-600/50'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'text-white border-blue-500'
+                  : 'text-slate-400 hover:text-white border-transparent'
               }`}
             >
               Disks ({metrics.disks?.length ?? 0})
             </button>
             <button
               onClick={() => setActiveTab('network')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-t-lg transition-colors ${
+              className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 ${
                 activeTab === 'network'
-                  ? 'bg-slate-700/50 text-white border-t border-x border-slate-600/50'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'text-white border-blue-500'
+                  : 'text-slate-400 hover:text-white border-transparent'
               }`}
             >
               Network ({filteredInterfaces.length})
@@ -300,7 +300,7 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
           </div>
 
           {/* Tab Content */}
-          <div className="p-4 bg-slate-900/30">
+          <div className="p-4">
             {activeTab === 'charts' && (
               <>
                 {history.length > 1 ? (
@@ -386,10 +386,39 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
             {activeTab === 'network' && (
               <div>
                 {filteredInterfaces.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {filteredInterfaces.map((iface, index) => (
-                      <NetworkCard key={`${iface.name}-${index}`} iface={iface} />
-                    ))}
+                  <div className="space-y-4">
+                    {/* Summary Stats */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {filteredInterfaces.map((iface, index) => (
+                        <NetworkCard key={`${iface.name}-${index}`} iface={iface} />
+                      ))}
+                    </div>
+                    
+                    {/* Network Graphs per Interface */}
+                    {history.length > 1 && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-3 border-t border-slate-700/30">
+                        {filteredInterfaces.map((iface) => (
+                          <MultiLineChart
+                            key={`${iface.name}-chart`}
+                            data={history.map((h) => {
+                              const ifaceData = h.interfaceStats?.[iface.name] || { rx: 0, tx: 0 };
+                              return {
+                                timestamp: h.timestamp,
+                                networkRxRate: ifaceData.rx || 0,
+                                networkTxRate: ifaceData.tx || 0,
+                              };
+                            })}
+                            lines={[
+                              { dataKey: 'networkRxRate', color: '#10b981', name: 'RX' },
+                              { dataKey: 'networkTxRate', color: '#f97316', name: 'TX' },
+                            ]}
+                            title={`${iface.name} I/O`}
+                            unit="bytes"
+                            height={120}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center text-slate-500 text-sm py-8">
