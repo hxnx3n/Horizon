@@ -202,20 +202,12 @@ func (c *PushClient) Stop() {
 func ValidateKey(serverURL, key string) error {
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	reqBody := RegisterRequest{
-		Key:      key,
-		NodeID:   "validation-test",
-		Hostname: "validation-test",
-		OS:       "test",
-		Platform: "test",
-	}
-
-	jsonData, err := json.Marshal(reqBody)
+	jsonData, err := json.Marshal(key)
 	if err != nil {
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", serverURL+"/api/agent/register", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", serverURL+"/api/agent/validate", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
