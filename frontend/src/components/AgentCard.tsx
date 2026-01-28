@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import MetricsChart, { MultiLineChart } from './MetricsChart';
+import { ConsoleTerminal } from './ConsoleTerminal';
+import { executeAgentCommand } from '../api/command';
 import type { RealtimeMetrics, MetricsHistoryPoint, DiskInfo, NetworkInterface } from '../types/agent';
 import type { Agent } from '../types/agent';
 
@@ -132,7 +134,7 @@ function NetworkCard({ iface }: { iface: NetworkInterface }) {
 
 export default function AgentCard({ agent, metrics, history, onDelete }: AgentCardProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<'charts' | 'disks' | 'network'>('charts');
+  const [activeTab, setActiveTab] = useState<'charts' | 'disks' | 'network' | 'console'>('charts');
   const isOnline = metrics?.online ?? false;
 
   const prevInterfacesRef = useRef<Map<string, NetworkInterface>>(new Map());
@@ -286,6 +288,16 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
             >
               Network ({filteredInterfaces.length})
             </button>
+            <button
+              onClick={() => setActiveTab('console')}
+              className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 ${
+                activeTab === 'console'
+                  ? 'text-white border-blue-500'
+                  : 'text-slate-400 hover:text-white border-transparent'
+              }`}
+            >
+              Console
+            </button>
           </div>
 
           {/* Tab Content */}
@@ -422,6 +434,15 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
                     No network interface information available.
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === 'console' && (
+              <div className="h-96">
+                <ConsoleTerminal
+                  agentId={agent.id.toString()}
+                  onCommand={(command) => executeAgentCommand(agent.id.toString(), command)}
+                />
               </div>
             )}
           </div>
