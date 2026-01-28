@@ -157,11 +157,13 @@ func (c *Collector) updateCache() *Metrics {
 
 	var osName, platform string
 	var uptime, processCount uint64
+
 	if c.hostInfo != nil {
 		osName = c.hostInfo.OS
 		platform = c.hostInfo.Platform
 	}
 
+	// Always fetch fresh uptime and process count
 	if info, err := host.Info(); err == nil {
 		uptime = info.Uptime
 		processCount = info.Procs
