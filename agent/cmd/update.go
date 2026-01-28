@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var Version = "dev"
+var Version = "1.0.5-dev"
 
 const (
 	githubRepo    = "hxnx3n/Horizon"
