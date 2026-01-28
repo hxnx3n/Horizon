@@ -6,14 +6,16 @@ interface CommandExecutionResponse {
   exitCode: number;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export async function executeAgentCommand(
   agentId: string,
   command: string
 ): Promise<string> {
   try {
-    const url = `${API_BASE_URL}/api/agents/${agentId}/command`;
+    const url = `${API_BASE_URL}/agents/${agentId}/command`;
+    const token = localStorage.getItem('accessToken');
+    
     console.log('Executing command:', { url, command });
     
     const response = await axios.post<CommandExecutionResponse>(
@@ -22,6 +24,7 @@ export async function executeAgentCommand(
       {
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
       }
     );
