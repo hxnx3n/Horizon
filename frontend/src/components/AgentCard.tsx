@@ -393,32 +393,6 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
                         <NetworkCard key={`${iface.name}-${index}`} iface={iface} />
                       ))}
                     </div>
-                    
-                    {/* Network Graphs per Interface */}
-                    {history.length > 1 && (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-3 border-t border-slate-700/30">
-                        {filteredInterfaces.map((iface) => (
-                          <MultiLineChart
-                            key={`${iface.name}-chart`}
-                            data={history.map((h) => {
-                              const ifaceData = h.interfaceStats?.[iface.name] || { rx: 0, tx: 0 };
-                              return {
-                                timestamp: h.timestamp,
-                                networkRxRate: ifaceData.rx || 0,
-                                networkTxRate: ifaceData.tx || 0,
-                              };
-                            })}
-                            lines={[
-                              { dataKey: 'networkRxRate', color: '#10b981', name: 'RX' },
-                              { dataKey: 'networkTxRate', color: '#f97316', name: 'TX' },
-                            ]}
-                            title={`${iface.name} I/O`}
-                            unit="bytes"
-                            height={120}
-                          />
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="text-center text-slate-500 text-sm py-8">
