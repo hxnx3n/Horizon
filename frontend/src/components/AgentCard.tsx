@@ -221,7 +221,7 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
       {isOnline && metrics && !isCollapsed && (
         <>
           {/* Quick Stats Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 px-4 py-3 border-b border-slate-700/30">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 px-4 py-3 border-b border-slate-700/30">
             <MiniGauge
               value={metrics.cpuUsage ?? 0}
               label="CPU"
@@ -243,17 +243,6 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
                 <span className="text-xs text-orange-400 tabular-nums">↑{formatBytesPerSec(totalNetworkTx)}</span>
               </div>
             </div>
-            {metrics.temperature !== null && metrics.temperature !== undefined && metrics.temperature > 0 && (
-              <div className="flex flex-col">
-                <span className="text-xs text-slate-400 mb-1">Temp</span>
-                <span className={`text-sm font-bold tabular-nums ${
-                  metrics.temperature > 80 ? 'text-red-400' :
-                  metrics.temperature > 60 ? 'text-yellow-400' : 'text-emerald-400'
-                }`}>
-                  {metrics.temperature}°C
-                </span>
-              </div>
-            )}
             <div className="flex flex-col">
               <span className="text-xs text-slate-400 mb-1">Uptime</span>
               <span className="text-sm font-bold text-slate-200 tabular-nums">
