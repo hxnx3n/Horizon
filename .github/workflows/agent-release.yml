@@ -13,8 +13,50 @@ env:
   BINARY_NAME: horizon-agent
 
 jobs:
+  check-version:
+    name: Check Version Change
+    runs-on: ubuntu-latest
+    outputs:
+      version-changed: ${{ steps.check.outputs.version-changed }}
+    steps:
+      - name: Checkout current
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(grep 'var Version = ' agent/cmd/update.go | sed 's/.*Version = "\(.*\)".*/\1/')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Get previous version
+        id: previous
+        run: |
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            VERSION=$(git show HEAD~1:agent/cmd/update.go | grep 'var Version = ' | sed 's/.*Version = "\(.*\)".*/\1/')
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "version=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if version changed
+        id: check
+        run: |
+          CURRENT="${{ steps.current.outputs.version }}"
+          PREVIOUS="${{ steps.previous.outputs.version }}"
+          if [ "$CURRENT" != "$PREVIOUS" ]; then
+            echo "version-changed=true" >> $GITHUB_OUTPUT
+            echo "Version changed: $PREVIOUS -> $CURRENT"
+          else
+            echo "version-changed=false" >> $GITHUB_OUTPUT
+            echo "Version unchanged: $CURRENT"
+          fi
+
   build:
     name: Build ${{ matrix.os }}/${{ matrix.arch }}
+    needs: check-version
+    if: needs.check-version.outputs.version-changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -71,6 +113,7 @@ jobs:
   release:
     name: Create Release
     needs: build
+    if: needs.check-version.outputs.version-changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
