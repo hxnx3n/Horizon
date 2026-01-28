@@ -135,7 +135,7 @@ func runPushMode() {
 	}
 	log.Printf("Registered successfully!")
 
-	wsClient := websocket.NewClient(authConfig.ServerURL, fmt.Sprintf("%d", pushClient.AgentID))
+	wsClient := websocket.NewClient(authConfig.ServerURL, pushClient.AgentID)
 	if err := wsClient.Connect(); err != nil {
 		log.Fatalf("Failed to connect to WebSocket: %v", err)
 	}
