@@ -169,6 +169,7 @@ export function useMetricsStream(options: UseMetricsStreamOptions = {}): UseMetr
           optionsRef.current.onMetrics?.(metricsArray);
         }
       } catch {
+        // Ignore JSON parse errors for malformed messages
       }
     };
 
