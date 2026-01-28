@@ -13,17 +13,11 @@ export default function DashboardPage() {
   const [clientKeys, setClientKeys] = useState<ClientKey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  // Key modal state
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [newKeyExpiresInDays, setNewKeyExpiresInDays] = useState<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Created key display
   const [createdKey, setCreatedKey] = useState<ClientKeyCreatedResponse | null>(null);
   const [copied, setCopied] = useState(false);
-
-  // Tab state
   const [activeTab, setActiveTab] = useState<'agents' | 'keys'>('agents');
 
   const { addMetrics, addMultipleMetrics, getHistory } = useMetricsHistory({ maxPoints: 60 });

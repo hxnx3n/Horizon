@@ -69,8 +69,6 @@ export function useMetricsHistory(options: UseMetricsHistoryOptions = {}): UseMe
     if (!metrics.online) return;
 
     const prevPoint = latestMetricsRef.current.get(metrics.agentId);
-
-    // Create interface stats from current interfaces
     const interfaceStats: Record<string, { rx: number; tx: number }> = {};
     if (metrics.interfaces) {
       metrics.interfaces.forEach((iface) => {
