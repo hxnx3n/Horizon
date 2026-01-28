@@ -8,6 +8,7 @@ import com.horizon.backend.entity.User;
 import com.horizon.backend.exception.BadRequestException;
 import com.horizon.backend.exception.DuplicateResourceException;
 import com.horizon.backend.exception.ResourceNotFoundException;
+import com.horizon.backend.exception.UnauthorizedException;
 import com.horizon.backend.repository.UserRepository;
 import com.horizon.backend.security.JwtTokenProvider;
 import com.horizon.backend.service.AuthService;
@@ -188,7 +189,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public UserDto getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated() 
+                || "anonymousUser".equals(authentication.getName())) {
+            throw new UnauthorizedException("Not authenticated");
+        }
+        
+        String email = authentication.getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
