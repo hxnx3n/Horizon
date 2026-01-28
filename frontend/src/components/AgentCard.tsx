@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import MetricsChart, { MultiLineChart } from './MetricsChart';
-import { ConsoleTerminal } from './ConsoleTerminal';
-import { executeAgentCommand } from '../api/command';
+import { InteractiveShell } from './InteractiveShell';
 import type { RealtimeMetrics, MetricsHistoryPoint, DiskInfo, NetworkInterface } from '../types/agent';
 import type { Agent } from '../types/agent';
 
@@ -137,34 +136,17 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
   const [activeTab, setActiveTab] = useState<'charts' | 'disks' | 'network' | 'console'>('charts');
   const isOnline = metrics?.online ?? false;
 
-  const prevInterfacesRef = useRef<Map<string, NetworkInterface>>(new Map());
-
-  useEffect(() => {
-    if (metrics?.interfaces) {
-      metrics.interfaces.forEach((iface) => {
-        if (iface.recvRate !== null && iface.recvRate !== undefined) {
-          prevInterfacesRef.current.set(iface.name, iface);
-        }
-      });
-    }
-  }, [metrics?.interfaces]);
-
-  const getInterfaceWithFallback = (iface: NetworkInterface): NetworkInterface => {
-    const prev = prevInterfacesRef.current.get(iface.name);
-    return {
-      ...iface,
-      recvRate: iface.recvRate ?? prev?.recvRate ?? 0,
-      sentRate: iface.sentRate ?? prev?.sentRate ?? 0,
-    };
-  };
-
   const totalNetworkRx = metrics?.interfaces?.reduce((sum, i) => sum + (i.recvRate || 0), 0) ?? 0;
   const totalNetworkTx = metrics?.interfaces?.reduce((sum, i) => sum + (i.sentRate || 0), 0) ?? 0;
 
   const filteredInterfaces = useMemo(() => {
-    return metrics?.interfaces?.filter(
+    return (metrics?.interfaces?.filter(
       (i) => i.name !== 'lo' && !i.name.startsWith('lo')
-    ).map(getInterfaceWithFallback) ?? [];
+    ) ?? []).map((iface) => ({
+      ...iface,
+      recvRate: iface.recvRate ?? 0,
+      sentRate: iface.sentRate ?? 0,
+    }));
   }, [metrics?.interfaces]);
 
   const totalDiskUsed = metrics?.disks?.reduce((sum, d) => sum + d.usedBytes, 0) ?? 0;
@@ -438,10 +420,10 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
             )}
 
             {activeTab === 'console' && (
-              <div className="h-96">
-                <ConsoleTerminal
+              <div style={{ height: '600px' }}>
+                <InteractiveShell
                   agentId={agent.id.toString()}
-                  onCommand={(command) => executeAgentCommand(agent.id.toString(), command)}
+                  hostname={agent.hostname || agent.name}
                 />
               </div>
             )}
