@@ -107,7 +107,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: agent-v${{ steps.version.outputs.version }}
           name: Horizon Agent ${{ steps.version.outputs.version }}
           draft: false
           prerelease: false
