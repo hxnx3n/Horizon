@@ -39,7 +39,7 @@ func NewClient(serverURL, agentID string) *Client {
 }
 
 func (c *Client) Connect() error {
-	wsURL := fmt.Sprintf("%s/ws/agent?agentId=%s", strings.Replace(c.ServerURL, "http://", "ws://", 1), c.AgentID)
+	wsURL := fmt.Sprintf("%s/api/ws/agent?agentId=%s", strings.Replace(c.ServerURL, "http://", "ws://", 1), c.AgentID)
 	log.Printf("Connecting to WebSocket: %s", wsURL)
 
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
