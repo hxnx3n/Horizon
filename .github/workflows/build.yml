@@ -3,6 +3,8 @@ name: Build Agent
 on:
   push:
     branches: [ main, develop ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main, develop ]
 
@@ -41,3 +43,13 @@ jobs:
       - name: Build Windows
         working-directory: ./agent
         run: GOOS=windows GOARCH=amd64 go build -o horizon-agent.exe -ldflags="-s -w" .
+      
+      - name: Create Release and Upload Assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            agent/horizon-agent-linux
+            agent/horizon-agent.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
