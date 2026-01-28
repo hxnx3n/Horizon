@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -32,17 +33,17 @@ type RegisterRequest struct {
 }
 
 type RegisterResponse struct {
-	StatusCode int `json:"statusCode"`
-	Result     *struct {
-		ID        string `json:"id"`
+	Success   bool   `json:"success"`
+	Message   string `json:"message"`
+	Data      *struct {
+		ID        int64  `json:"id"`
 		NodeID    string `json:"nodeId"`
 		Hostname  string `json:"hostname"`
 		OS        string `json:"os"`
 		Platform  string `json:"platform"`
-		IPAddress string `json:"ipAddress"`
-	} `json:"result"`
-	ErrorCode    string `json:"errorCode"`
-	ErrorMessage string `json:"errorMessage"`
+		CreatedAt string `json:"createdAt"`
+	} `json:"data"`
+	Timestamp string `json:"timestamp"`
 }
 
 type PushRequest struct {
@@ -119,15 +120,17 @@ func (c *PushClient) Register() error {
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		var errResp RegisterResponse
-		if err := json.Unmarshal(body, &errResp); err == nil && errResp.ErrorMessage != "" {
-			return fmt.Errorf("registration failed: %s", errResp.ErrorMessage)
+		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Message != "" {
+			return fmt.Errorf("registration failed: %s", errResp.Message)
 		}
 		return fmt.Errorf("registration failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var response RegisterResponse
-	if err := json.Unmarshal(body, &response); err == nil && response.Result != nil {
-		c.AgentID = response.Result.ID
+	if err := json.Unmarshal(body, &response); err == nil && response.Data != nil {
+		c.AgentID = fmt.Sprintf("%d", response.Data.ID)
+	} else if err != nil {
+		log.Printf("Failed to unmarshal register response: %v, body: %s", err, string(body))
 	}
 
 	return nil
