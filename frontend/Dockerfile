@@ -10,7 +10,7 @@ RUN pnpm install
 
 COPY . .
 
-CMD ["pnpm", "build"]
+RUN pnpm build
 
 FROM nginx:alpine AS production
 
