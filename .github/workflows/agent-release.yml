@@ -3,7 +3,7 @@ name: Agent Release
 on:
   push:
     tags:
-      - "agent-v*"
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
