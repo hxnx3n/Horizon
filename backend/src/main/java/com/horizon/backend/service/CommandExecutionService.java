@@ -9,12 +9,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CommandExecutionService {
+
+    private static final long COMMAND_TIMEOUT_SECONDS = 30;
 
     private final AgentRepository agentRepository;
     private final AgentWebSocketHandler agentWebSocketHandler;
@@ -42,14 +42,13 @@ public class CommandExecutionService {
         log.info("Executing command on agent {}: {}", agentId, command);
 
         try {
-            agentWebSocketHandler.sendCommandToAgent(agentId, command);
-            return new CommandExecutionResponse("Command sent to agent, waiting for response...", "", 0);
-        } catch (IOException e) {
-            log.error("Error sending command to agent {}: {}", agentId, e.getMessage(), e);
-            return new CommandExecutionResponse(
-                    "",
-                    "Failed to send command to agent: " + e.getMessage(),
-                    -1);
+            AgentWebSocketHandler.CommandResult result = 
+                agentWebSocketHandler.sendCommandAndWait(agentId, command, COMMAND_TIMEOUT_SECONDS);
+            
+            return new CommandExecutionResponse(result.output, result.error, result.exitCode);
+        } catch (java.io.IOException e) {
+            log.error("Error sending command to agent {}: {}", agentId, e.getMessage());
+            return new CommandExecutionResponse("", e.getMessage(), -1);
         } catch (Exception e) {
             log.error("Unexpected error executing command on agent {}: {}", agentId, e.getMessage(), e);
             return new CommandExecutionResponse(
