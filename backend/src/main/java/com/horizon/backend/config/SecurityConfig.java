@@ -43,7 +43,7 @@ public class SecurityConfig {
             "/metrics/report",
             "/metrics/agents/**",
             "/agent/**",
-            "/api/agents/*/command"
+            "/ws/**"
     };
 
     @Bean
