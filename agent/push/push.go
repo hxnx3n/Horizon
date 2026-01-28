@@ -13,14 +13,16 @@ import (
 )
 
 type PushClient struct {
-	serverURL  string
-	key        string
-	httpClient *http.Client
-	collector  *metrics.Collector
-	interval   time.Duration
-	port       int
-	stopCh     chan struct{}
-	AgentID    string
+	serverURL    string
+	key          string
+	httpClient   *http.Client
+	collector    *metrics.Collector
+	interval     time.Duration
+	port         int
+	stopCh       chan struct{}
+	AgentID      string
+	authInvalid  bool
+	authErrorMsg string
 }
 
 type RegisterRequest struct {
@@ -75,10 +77,12 @@ func NewPushClient(serverURL, key string, collector *metrics.Collector, interval
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
-		collector: collector,
-		interval:  interval,
-		port:      port,
-		stopCh:    make(chan struct{}),
+		collector:    collector,
+		interval:     interval,
+		port:         port,
+		stopCh:       make(chan struct{}),
+		authInvalid:  false,
+		authErrorMsg: "",
 	}
 }
 
@@ -118,6 +122,13 @@ func (c *PushClient) Register() error {
 		return fmt.Errorf("failed to read register response: %w", err)
 	}
 
+	// 인증 오류 감지 (401 Unauthorized, 403 Forbidden)
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		c.authInvalid = true
+		c.authErrorMsg = fmt.Sprintf("key invalid or expired (HTTP %d): %s", resp.StatusCode, string(body))
+		return fmt.Errorf("authentication failed: %s", c.authErrorMsg)
+	}
+
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		var errResp RegisterResponse
 		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Message != "" {
@@ -137,6 +148,11 @@ func (c *PushClient) Register() error {
 }
 
 func (c *PushClient) PushMetrics() error {
+	// 인증이 무효화된 경우 푸시 중단
+	if c.authInvalid {
+		return fmt.Errorf("authentication invalid: %s", c.authErrorMsg)
+	}
+
 	m := c.collector.GetMetrics()
 
 	payload := &MetricsPayload{
@@ -180,6 +196,14 @@ func (c *PushClient) PushMetrics() error {
 	}
 	defer resp.Body.Close()
 
+	// 인증 오류 감지 (401 Unauthorized, 403 Forbidden)
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		body, _ := io.ReadAll(resp.Body)
+		c.authInvalid = true
+		c.authErrorMsg = fmt.Sprintf("key invalid or expired (HTTP %d): %s", resp.StatusCode, string(body))
+		return fmt.Errorf("authentication failed: %s", c.authErrorMsg)
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("push failed with status %d: %s", resp.StatusCode, string(body))
@@ -194,18 +218,50 @@ func (c *PushClient) StartPushing() {
 
 	if err := c.PushMetrics(); err != nil {
 		fmt.Printf("Failed to push metrics: %v\n", err)
+		if c.authInvalid {
+			c.handleAuthFailure()
+			return
+		}
 	}
 
 	for {
 		select {
 		case <-ticker.C:
+			// 인증이 무효화된 경우 푸시 중단
+			if c.authInvalid {
+				c.handleAuthFailure()
+				return
+			}
 			if err := c.PushMetrics(); err != nil {
 				fmt.Printf("Failed to push metrics: %v\n", err)
+				if c.authInvalid {
+					c.handleAuthFailure()
+					return
+				}
 			}
 		case <-c.stopCh:
 			return
 		}
 	}
+}
+
+func (c *PushClient) handleAuthFailure() {
+	log.Println()
+	log.Println("╔════════════════════════════════════════════════════════════╗")
+	log.Println("║  AUTHENTICATION FAILED - METRICS PUSH STOPPED              ║")
+	log.Println("╠════════════════════════════════════════════════════════════╣")
+	log.Printf("║  Error: %s\n", c.authErrorMsg)
+	log.Println("║                                                            ║")
+	log.Println("║  To resume metrics push:                                   ║")
+	log.Println("║  1. Get a new valid client key from the dashboard          ║")
+	log.Println("║  2. Run: horizon-agent auth <new-key> <server-url>         ║")
+	log.Println("║  3. Restart the agent: horizon-agent run                   ║")
+	log.Println("╚════════════════════════════════════════════════════════════╝")
+	log.Println()
+}
+
+func (c *PushClient) IsAuthValid() bool {
+	return !c.authInvalid
 }
 
 func (c *PushClient) Stop() {
