@@ -41,9 +41,11 @@ server:
 
 logging:
   level:
-    root: WARN
-    com.horizon.backend: INFO
-    org.hibernate.SQL: WARN
+    root: ERROR
+    com.horizon.backend: WARN
+    org.hibernate.SQL: ERROR
+    org.springframework: ERROR
+    org.springframework.security: ERROR
   file:
     name: logs/horizon-backend.log
 
