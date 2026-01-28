@@ -240,10 +240,8 @@ func executeCommand(command string) (string, error) {
 	var cmd *exec.Cmd
 
 	if os.Getenv("HORIZON_OS") == "windows" || len(os.Args) > 0 {
-		// Windows
 		cmd = exec.Command("cmd.exe", "/c", command)
 	} else {
-		// Unix-like (Linux, macOS)
 		cmd = exec.Command("/bin/sh", "-c", command)
 	}
 
