@@ -2,8 +2,10 @@ name: Agent Release
 
 on:
   push:
+    branches:
+      - main
     tags:
-      - "v*"
+      - "agent-v*"
   workflow_dispatch:
     inputs:
       version:
@@ -55,8 +57,11 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref_type }}" == "tag" ]; then
+            echo "version=${GITHUB_REF_NAME#agent-v}" >> $GITHUB_OUTPUT
           else
-            echo "version=${GITHUB_REF#refs/tags/agent-v}" >> $GITHUB_OUTPUT
+            VERSION=$(grep 'var Version = ' agent/cmd/update.go | sed 's/.*Version = "\(.*\)".*/\1/')
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
           fi
 
       - name: Build binary
@@ -94,8 +99,11 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref_type }}" == "tag" ]; then
+            echo "version=${GITHUB_REF_NAME#agent-v}" >> $GITHUB_OUTPUT
           else
-            echo "version=${GITHUB_REF#refs/tags/agent-v}" >> $GITHUB_OUTPUT
+            VERSION=$(grep 'var Version = ' agent/cmd/update.go | sed 's/.*Version = "\(.*\)".*/\1/')
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
           fi
 
       - name: Delete existing release if exists
