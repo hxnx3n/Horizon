@@ -33,9 +33,9 @@ type RegisterRequest struct {
 }
 
 type RegisterResponse struct {
-	Success   bool   `json:"success"`
-	Message   string `json:"message"`
-	Data      *struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Data    *struct {
 		ID        int64  `json:"id"`
 		NodeID    string `json:"nodeId"`
 		Hostname  string `json:"hostname"`
