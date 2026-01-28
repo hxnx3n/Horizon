@@ -49,7 +49,6 @@ public class ClientKeyServiceImpl implements ClientKeyService {
                 .userId(userId)
                 .keyValue(keyValue)
                 .name(autoName)
-                .description(request.getDescription())
                 .enabled(true)
                 .expiresAt(expiresAt)
                 .build();

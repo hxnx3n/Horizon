@@ -16,7 +16,6 @@ export default function DashboardPage() {
   
   // Key modal state
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
-  const [newKeyDescription, setNewKeyDescription] = useState('');
   const [newKeyExpiresInDays, setNewKeyExpiresInDays] = useState<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -79,13 +78,11 @@ export default function DashboardPage() {
 
     try {
       const response = await createClientKey({
-        description: newKeyDescription || undefined,
         expiresInDays: newKeyExpiresInDays,
       });
       if (response.success && response.data) {
         setCreatedKey(response.data);
         fetchClientKeys();
-        setNewKeyDescription('');
         setNewKeyExpiresInDays(undefined);
       } else {
         setError(response.message || 'Failed to create key');
@@ -464,22 +461,6 @@ export default function DashboardPage() {
                   <div>
                     <label
                       htmlFor="keyDescription"
-                      className="block text-sm font-medium text-slate-300 mb-2"
-                    >
-                      Description (optional)
-                    </label>
-                    <input
-                      id="keyDescription"
-                      type="text"
-                      value={newKeyDescription}
-                      onChange={(e) => setNewKeyDescription(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Optional description"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="keyExpiry"
                       className="block text-sm font-medium text-slate-300 mb-2"
                     >
                       Expires In (days)

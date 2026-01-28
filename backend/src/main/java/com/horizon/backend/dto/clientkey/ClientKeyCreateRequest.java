@@ -11,8 +11,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ClientKeyCreateRequest {
 
-    @Size(max = 255, message = "Description must be at most 255 characters")
-    private String description;
-
     private Integer expiresInDays;
 }
