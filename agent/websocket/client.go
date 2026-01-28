@@ -10,8 +10,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
-	"unsafe"
 
 	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
@@ -202,22 +200,10 @@ func (c *Client) resizePtyUnsafe(cols, rows int) {
 		return
 	}
 
-	ws := struct {
-		Row    uint16
-		Col    uint16
-		Xpixel uint16
-		Ypixel uint16
-	}{
-		Row: uint16(rows),
-		Col: uint16(cols),
-	}
-
-	syscall.SyscallN(
-		syscall.SYS_IOCTL,
-		c.ptyFile.Fd(),
-		syscall.TIOCSWINSZ,
-		uintptr(unsafe.Pointer(&ws)),
-	)
+	pty.Setsize(c.ptyFile, &pty.Winsize{
+		Rows: uint16(rows),
+		Cols: uint16(cols),
+	})
 }
 
 func (c *Client) stopInteractiveShell() {
@@ -225,7 +211,7 @@ func (c *Client) stopInteractiveShell() {
 	defer c.ptyMu.Unlock()
 
 	if c.ptyCmd != nil && c.ptyCmd.Process != nil {
-		c.ptyCmd.Process.Signal(syscall.SIGTERM)
+		c.ptyCmd.Process.Kill()
 	}
 	if c.ptyFile != nil {
 		c.ptyFile.Close()
