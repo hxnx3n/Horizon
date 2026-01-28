@@ -23,4 +23,6 @@ public class AgentRegisterRequest {
     private String os;
     
     private String platform;
+    
+    private Integer port;
 }

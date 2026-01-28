@@ -48,6 +48,12 @@ public class Agent {
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
 
+    @Column(name = "agent_ip", length = 50)
+    private String agentIp;
+
+    @Column(name = "agent_port")
+    private Integer agentPort;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

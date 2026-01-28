@@ -59,6 +59,8 @@ public class AgentPushServiceImpl implements AgentPushService {
             agent.setHostname(request.getHostname());
             agent.setOs(request.getOs());
             agent.setPlatform(request.getPlatform());
+            agent.setAgentIp(ipAddress);
+            agent.setAgentPort(request.getPort());
             agent.setLastSeenAt(LocalDateTime.now());
             agent = agentRepository.save(agent);
             log.info("Agent updated: {} (nodeId: {})", agent.getName(), request.getNodeId());
@@ -79,6 +81,8 @@ public class AgentPushServiceImpl implements AgentPushService {
                     .hostname(request.getHostname())
                     .os(request.getOs())
                     .platform(request.getPlatform())
+                    .agentIp(ipAddress)
+                    .agentPort(request.getPort())
                     .enabled(true)
                     .lastSeenAt(LocalDateTime.now())
                     .build();
