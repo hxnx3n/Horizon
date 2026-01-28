@@ -69,6 +69,7 @@ export interface MetricsHistoryPoint {
   networkRxRate: number | null;
   networkTxRate: number | null;
   temperature: number | null;
+  interfaceStats?: Record<string, { rx: number; tx: number }>;
 }
 
 export interface AgentMetricsHistory {

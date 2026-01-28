@@ -70,6 +70,19 @@ export function useMetricsHistory(options: UseMetricsHistoryOptions = {}): UseMe
 
     const prevPoint = latestMetricsRef.current.get(metrics.agentId);
 
+    // Create interface stats from current interfaces
+    const interfaceStats: Record<string, { rx: number; tx: number }> = {};
+    if (metrics.interfaces) {
+      metrics.interfaces.forEach((iface) => {
+        if (iface.name !== 'lo' && !iface.name.startsWith('lo')) {
+          interfaceStats[iface.name] = {
+            rx: iface.recvRate || 0,
+            tx: iface.sentRate || 0,
+          };
+        }
+      });
+    }
+
     const point: MetricsHistoryPoint = {
       timestamp: Date.now(),
       cpuUsage: metrics.cpuUsage ?? prevPoint?.cpuUsage ?? null,
@@ -78,6 +91,7 @@ export function useMetricsHistory(options: UseMetricsHistoryOptions = {}): UseMe
       networkRxRate: metrics.networkRxRate ?? prevPoint?.networkRxRate ?? null,
       networkTxRate: metrics.networkTxRate ?? prevPoint?.networkTxRate ?? null,
       temperature: metrics.temperature ?? prevPoint?.temperature ?? null,
+      interfaceStats: Object.keys(interfaceStats).length > 0 ? interfaceStats : prevPoint?.interfaceStats,
     };
 
     latestMetricsRef.current.set(metrics.agentId, point);
