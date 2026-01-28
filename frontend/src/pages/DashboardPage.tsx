@@ -16,7 +16,6 @@ export default function DashboardPage() {
   
   // Key modal state
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
-  const [newKeyName, setNewKeyName] = useState('');
   const [newKeyDescription, setNewKeyDescription] = useState('');
   const [newKeyExpiresInDays, setNewKeyExpiresInDays] = useState<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,14 +79,12 @@ export default function DashboardPage() {
 
     try {
       const response = await createClientKey({
-        name: newKeyName,
         description: newKeyDescription || undefined,
         expiresInDays: newKeyExpiresInDays,
       });
       if (response.success && response.data) {
         setCreatedKey(response.data);
         fetchClientKeys();
-        setNewKeyName('');
         setNewKeyDescription('');
         setNewKeyExpiresInDays(undefined);
       } else {
@@ -464,23 +461,6 @@ export default function DashboardPage() {
               <>
                 <h3 className="text-lg font-semibold text-white mb-4">Generate Client Key</h3>
                 <form onSubmit={handleCreateKey} className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="keyName"
-                      className="block text-sm font-medium text-slate-300 mb-2"
-                    >
-                      Name
-                    </label>
-                    <input
-                      id="keyName"
-                      type="text"
-                      value={newKeyName}
-                      onChange={(e) => setNewKeyName(e.target.value)}
-                      required
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="e.g., Production Server"
-                    />
-                  </div>
                   <div>
                     <label
                       htmlFor="keyDescription"

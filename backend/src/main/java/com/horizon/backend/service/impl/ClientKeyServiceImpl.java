@@ -32,14 +32,13 @@ public class ClientKeyServiceImpl implements ClientKeyService {
     @Override
     @Transactional
     public ClientKeyCreatedResponse createKey(Long userId, ClientKeyCreateRequest request) {
-        if (clientKeyRepository.existsByUserIdAndName(userId, request.getName())) {
-            throw new IllegalArgumentException("A key with this name already exists");
-        }
-
         String keyValue = generateKey();
         while (clientKeyRepository.existsByKeyValue(keyValue)) {
             keyValue = generateKey();
         }
+
+        // Auto-generate name from timestamp
+        String autoName = "Key-" + System.currentTimeMillis();
 
         LocalDateTime expiresAt = null;
         if (request.getExpiresInDays() != null && request.getExpiresInDays() > 0) {
@@ -49,14 +48,14 @@ public class ClientKeyServiceImpl implements ClientKeyService {
         ClientKey clientKey = ClientKey.builder()
                 .userId(userId)
                 .keyValue(keyValue)
-                .name(request.getName())
+                .name(autoName)
                 .description(request.getDescription())
                 .enabled(true)
                 .expiresAt(expiresAt)
                 .build();
 
         ClientKey savedKey = clientKeyRepository.save(clientKey);
-        log.info("Created new client key for user: {} with name: {}", userId, request.getName());
+        log.info("Created new client key for user: {} with auto-generated name: {}", userId, autoName);
 
         return ClientKeyCreatedResponse.from(savedKey);
     }

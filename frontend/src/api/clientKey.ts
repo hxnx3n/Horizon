@@ -23,7 +23,6 @@ export interface ClientKey {
 }
 
 export interface ClientKeyCreateRequest {
-  name: string;
   description?: string;
   expiresInDays?: number;
 }
