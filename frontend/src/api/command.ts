@@ -36,11 +36,10 @@ export async function executeAgentCommand(
     return result || 'Command executed successfully';
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(
-        error.response?.data?.error ||
+      const message = (error.response?.data as { error?: string })?.error ||
         error.message ||
-        'Failed to execute command'
-      );
+        'Failed to execute command';
+      throw new Error(message);
     }
     throw error;
   }
