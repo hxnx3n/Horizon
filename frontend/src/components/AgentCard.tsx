@@ -388,28 +388,31 @@ export default function AgentCard({ agent, metrics, history, onDelete }: AgentCa
                       <div className="pt-4 border-t border-slate-700/30">
                         <p className="text-sm font-semibold text-slate-300 mb-4">Network Interface History</p>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          {filteredInterfaces.map((iface) => (
-                            <div key={`${iface.name}-graph`} className="bg-slate-700/20 rounded-lg p-4">
-                              <p className="text-xs font-medium text-slate-400 mb-2">{iface.name}</p>
-                              <MultiLineChart
-                                data={history.map((h) => {
-                                  const ifaceData = h.interfaceStats?.[iface.name] || { rx: 0, tx: 0 };
-                                  return {
-                                    timestamp: h.timestamp,
-                                    networkRxRate: ifaceData.rx || 0,
-                                    networkTxRate: ifaceData.tx || 0,
-                                  };
-                                })}
-                                lines={[
-                                  { dataKey: 'networkRxRate', color: '#10b981', name: 'RX' },
-                                  { dataKey: 'networkTxRate', color: '#f97316', name: 'TX' },
-                                ]}
-                                title=""
-                                unit="bytes"
-                                height={100}
-                              />
-                            </div>
-                          ))}
+                          {filteredInterfaces.map((iface) => {
+                            const interfaceHistory = history.map((h) => {
+                              const ifaceData = h.interfaceStats?.[iface.name] || { rx: 0, tx: 0 };
+                              return {
+                                ...h,
+                                networkRxRate: ifaceData.rx || 0,
+                                networkTxRate: ifaceData.tx || 0,
+                              };
+                            });
+                            return (
+                              <div key={`${iface.name}-graph`} className="bg-slate-700/20 rounded-lg p-4">
+                                <p className="text-xs font-medium text-slate-400 mb-2">{iface.name}</p>
+                                <MultiLineChart
+                                  data={interfaceHistory}
+                                  lines={[
+                                    { dataKey: 'networkRxRate', color: '#10b981', name: 'RX' },
+                                    { dataKey: 'networkTxRate', color: '#f97316', name: 'TX' },
+                                  ]}
+                                  title=""
+                                  unit="bytes"
+                                  height={100}
+                                />
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
