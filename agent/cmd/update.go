@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var Version = "0.3.5"
+var Version = "0.3.6"
 
 const (
 	githubRepo    = "hxnx3n/Horizon"
@@ -275,18 +275,20 @@ func killExistingAgents() {
 
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("taskkill", "/F", "/IM", "horizon-agent.exe")
+		cmd = exec.Command("powershell", "-Command",
+			fmt.Sprintf("Get-Process -Name horizon-agent -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne %d } | Stop-Process -Force", myPid))
 	} else {
-		cmd = exec.Command("pkill", "-f", "horizon-agent")
+		script := fmt.Sprintf("pgrep -f horizon-agent | grep -v '^%d$' | xargs -r kill -9 2>/dev/null || true", myPid)
+		cmd = exec.Command("sh", "-c", script)
 	}
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		if runtime.GOOS != "windows" {
-			fmt.Println("  No running horizon-agent processes found (or already stopped)")
-		}
-	} else {
+		fmt.Println("  No other running horizon-agent processes found")
+	} else if len(strings.TrimSpace(string(output))) > 0 {
 		fmt.Printf("  Stopped existing processes: %s\n", strings.TrimSpace(string(output)))
+	} else {
+		fmt.Println("  Stopped other horizon-agent processes")
 	}
 
 	time.Sleep(500 * time.Millisecond)
