@@ -4,14 +4,7 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "agent-v*"
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to release 1.0.0"
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -55,14 +48,9 @@ jobs:
       - name: Get version
         id: version
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref_type }}" == "tag" ]; then
-            echo "version=${GITHUB_REF_NAME#agent-v}" >> $GITHUB_OUTPUT
-          else
-            VERSION=$(grep 'var Version = ' agent/cmd/update.go | sed 's/.*Version = "\(.*\)".*/\1/')
-            echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          fi
+          VERSION=$(grep 'var Version = ' agent/cmd/update.go | sed 's/.*Version = "\(.*\)".*/\1/')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
 
       - name: Build binary
         working-directory: agent
@@ -97,14 +85,9 @@ jobs:
       - name: Get version
         id: version
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref_type }}" == "tag" ]; then
-            echo "version=${GITHUB_REF_NAME#agent-v}" >> $GITHUB_OUTPUT
-          else
-            VERSION=$(grep 'var Version = ' agent/cmd/update.go | sed 's/.*Version = "\(.*\)".*/\1/')
-            echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          fi
+          VERSION=$(grep 'var Version = ' agent/cmd/update.go | sed 's/.*Version = "\(.*\)".*/\1/')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
 
       - name: Delete existing release if exists
         uses: actions/github-script@v6
@@ -140,10 +123,10 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: agent-v${{ steps.version.outputs.version }}
           name: Horizon Agent ${{ steps.version.outputs.version }}
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(steps.version.outputs.version, 'dev') }}
           generate_release_notes: false
           files: |
             dist/*
