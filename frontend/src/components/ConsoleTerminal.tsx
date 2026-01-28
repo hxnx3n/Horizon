@@ -54,7 +54,6 @@ export function ConsoleTerminal({ agentId, onCommand }: ConsoleTerminalProps) {
         const result = await onCommand(input);
         addLog('output', result);
       } else {
-        // 기본 동작: 로컬 명령어 시뮬레이션
         addLog('output', `Command executed: ${input}`);
       }
     } catch (error) {

@@ -42,7 +42,8 @@ public class SecurityConfig {
             "/health/**",
             "/metrics/report",
             "/metrics/agents/**",
-            "/agent/**"
+            "/agent/**",
+            "/api/agents/*/command"
     };
 
     @Bean
@@ -72,7 +73,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
+        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173", "http://localhost", "http://localhost:80"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "X-Agent-Key"));
         configuration.setExposedHeaders(List.of("Authorization"));
