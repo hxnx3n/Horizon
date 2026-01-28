@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var Version = "1.1.0-dev"
+var Version = "1.1.0"
 
 const (
 	githubRepo    = "hxnx3n/Horizon"
@@ -33,21 +33,32 @@ func RunVersion() {
 	fmt.Printf("  OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 }
 
-func RunUpdate() error {
+func RunUpdate(targetVersion string) error {
 	fmt.Println("Checking for updates...")
 
-	latest, err := getLatestRelease()
-	if err != nil {
-		return fmt.Errorf("failed to check for updates: %w", err)
+	var release *GitHubRelease
+	var err error
+
+	if targetVersion != "" {
+		fmt.Printf("Searching for version %s...\n", targetVersion)
+		release, err = getReleaseByVersion(targetVersion)
+		if err != nil {
+			return fmt.Errorf("failed to find version %s: %w", targetVersion, err)
+		}
+	} else {
+		release, err = getLatestRelease()
+		if err != nil {
+			return fmt.Errorf("failed to check for updates: %w", err)
+		}
 	}
 
-	latestVersion := strings.TrimPrefix(latest.TagName, releasePrefix)
+	latestVersion := strings.TrimPrefix(release.TagName, releasePrefix)
 	currentVersion := strings.TrimPrefix(Version, "v")
 
 	fmt.Printf("  Current version: %s\n", Version)
-	fmt.Printf("  Latest version:  %s\n", latestVersion)
+	fmt.Printf("  Target version:  %s\n", latestVersion)
 
-	if Version != "dev" && currentVersion == latestVersion {
+	if targetVersion == "" && Version != "dev" && currentVersion == latestVersion {
 		fmt.Println("\n✓ You are already running the latest version.")
 		return nil
 	}
@@ -55,7 +66,7 @@ func RunUpdate() error {
 	binaryFileName := getBinaryFileName()
 	var downloadURL string
 
-	for _, asset := range latest.Assets {
+	for _, asset := range release.Assets {
 		if asset.Name == binaryFileName {
 			downloadURL = asset.BrowserDownloadURL
 			break
@@ -120,6 +131,44 @@ func getLatestRelease() (*GitHubRelease, error) {
 	}
 
 	return nil, fmt.Errorf("no agent releases found")
+}
+
+func getReleaseByVersion(version string) (*GitHubRelease, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repos/%s/releases", githubRepo), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	var releases []GitHubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return nil, err
+	}
+
+	normalizedVersion := strings.TrimPrefix(version, "v")
+
+	for _, release := range releases {
+		if strings.HasPrefix(release.TagName, releasePrefix) {
+			releaseVersion := strings.TrimPrefix(release.TagName, releasePrefix)
+			if releaseVersion == normalizedVersion {
+				return &release, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("version %s not found", version)
 }
 
 func getBinaryFileName() string {

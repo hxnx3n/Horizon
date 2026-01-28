@@ -78,7 +78,11 @@ func main() {
 		}
 
 	case "update":
-		if err := cmd.RunUpdate(); err != nil {
+		var targetVersion string
+		if len(os.Args) > 2 {
+			targetVersion = os.Args[2]
+		}
+		if err := cmd.RunUpdate(targetVersion); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

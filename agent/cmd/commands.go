@@ -22,7 +22,7 @@ Commands:
   stop                             Stop the running agent
   status                           Show agent and service status
   deauth                           Remove authentication and unregister
-  update                           Update to the latest version
+  update [version]                 Update to the latest or specified version
   version                          Show version information
 
 Service Commands (Linux, requires sudo):
@@ -33,6 +33,8 @@ Examples:
   horizon-agent auth hzn_abc123def456 http://myserver:8080
   horizon-agent run
   horizon-agent run -d
+  horizon-agent update
+  horizon-agent update 1.0.5
   sudo horizon-agent install
   horizon-agent status`, Version)
 	fmt.Println()
